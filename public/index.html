@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>My 3D Calc</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Onest:wght@400;500;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f0f11;--bg2:#16161a;--bg3:#1e1e24;--bg4:#26262e;
+  --border:#2e2e38;--border2:#3a3a46;
+  --text:#e8e8f0;--text2:#9898a8;--text3:#606070;
+  --accent:#7c6dfa;--accent2:#5a4de0;--accent-bg:rgba(124,109,250,.13);
+  --green:#3dd68c;--green-bg:rgba(61,214,140,.1);--green-border:rgba(61,214,140,.3);
+  --amber:#f5a623;--amber-bg:rgba(245,166,35,.1);--amber-border:rgba(245,166,35,.3);
+  --red:#f0605a;--red-bg:rgba(240,96,90,.1);--red-border:rgba(240,96,90,.3);
+  --r:8px;--r2:12px;
+  font-family:'Onest',sans-serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--text)}
+.app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* TOPBAR */
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);height:52px;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px}
+.topbar-logo{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;color:var(--accent);letter-spacing:.02em;white-space:nowrap}
+.topbar-logo span{color:var(--text3)}
+.tab-switch{display:flex;background:var(--bg3);border-radius:var(--r);padding:3px;gap:2px;flex-shrink:0}
+.tab-btn{padding:5px 14px;border-radius:6px;border:none;cursor:pointer;font-family:'Onest',sans-serif;font-size:12px;font-weight:500;transition:all .2s;background:transparent;color:var(--text2);white-space:nowrap}
+.tab-btn.on{background:var(--accent);color:#fff}
+.topbar-right{font-size:12px;color:var(--text3);font-family:'JetBrains Mono',monospace;white-space:nowrap}
+
+/* VIEWS */
+.view{display:none;flex:1;overflow:hidden}
+.view.on{display:flex}
+
+/* ══ ADMIN ══ */
+.admin{flex:1;display:grid;grid-template-columns:196px 1fr;min-height:0}
+.admin-nav{background:var(--bg2);border-right:1px solid var(--border);padding:.75rem 0;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.nav-section{padding:7px 1rem 3px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-top:6px}
+.nav-item{padding:7px 1rem;font-size:13px;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .15s;border-left:2px solid transparent}
+.nav-item:hover{color:var(--text);background:var(--bg3)}
+.nav-item.on{color:var(--accent);background:var(--accent-bg);border-left-color:var(--accent)}
+.admin-content{overflow-y:auto;padding:1.25rem 1.5rem}
+.admin-panel{display:none}
+.admin-panel.on{display:block}
+.panel-title{font-size:17px;font-weight:500;margin-bottom:2px}
+.panel-sub{font-size:13px;color:var(--text2);margin-bottom:1.25rem}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:1.1rem 1.25rem;margin-bottom:12px}
+.ctitle{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.9rem;font-family:'JetBrains Mono',monospace}
+.frow{display:grid;gap:10px;margin-bottom:10px}
+.frow.c2{grid-template-columns:1fr 1fr}
+.frow.c3{grid-template-columns:1fr 1fr 1fr}
+.frow.c4{grid-template-columns:1fr 1fr 1fr 1fr}
+.frow.c1{grid-template-columns:1fr}
+.field{display:flex;flex-direction:column;gap:3px}
+.field label{font-size:11px;color:var(--text3);font-weight:500;font-family:'JetBrains Mono',monospace;letter-spacing:.03em}
+.field input,.field select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:7px 10px;font-size:13px;color:var(--text);font-family:'Onest',sans-serif;outline:none;transition:border .15s;width:100%}
+.field input:focus,.field select:focus{border-color:var(--accent)}
+.field select option{background:var(--bg3)}
+.field .hint{font-size:10px;color:var(--text3);line-height:1.4;margin-top:2px}
+.field .readonly{background:var(--bg4)!important;color:var(--green)!important;font-family:'JetBrains Mono',monospace!important}
+.btn{padding:7px 14px;border-radius:var(--r);border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-size:12px;font-family:'Onest',sans-serif;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:5px}
+.btn:hover{background:var(--bg4);color:var(--text)}
+.btn.primary{background:var(--accent);border-color:var(--accent2);color:#fff}
+.btn.primary:hover{background:var(--accent2)}
+.btn.sm{padding:4px 10px;font-size:11px}
+.btn.danger{color:var(--red)}
+.btn.danger:hover{background:var(--red-bg);border-color:var(--red)}
+.list-item{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:9px 13px;margin-bottom:5px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.li-name{font-size:13px;font-weight:500}
+.li-meta{font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-top:1px}
+.li-actions{display:flex;gap:4px;flex-shrink:0}
+.tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;font-family:'JetBrains Mono',monospace;letter-spacing:.03em}
+.tag.blue{background:var(--accent-bg);color:var(--accent)}
+.tag.green{background:var(--green-bg);color:var(--green)}
+.tag.amber{background:var(--amber-bg);color:var(--amber)}
+.divider{border:none;border-top:1px solid var(--border);margin:.9rem 0}
+.info-banner{background:var(--accent-bg);border:1px solid rgba(124,109,250,.2);border-radius:var(--r);padding:9px 12px;font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:1rem}
+.info-banner b{color:var(--accent)}
+.empty{text-align:center;padding:2rem;color:var(--text3);font-size:13px}
+
+/* ══ CLIENT ══ */
+.client{flex:1;display:grid;grid-template-columns:1fr 330px;min-height:0}
+.client-form{overflow-y:auto;padding:1.25rem 1.5rem}
+.client-result{background:var(--bg2);border-left:1px solid var(--border);padding:1.25rem;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.csection{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:1.1rem 1.25rem;margin-bottom:10px}
+.csec-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:.9rem;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;gap:6px}
+.csec-title::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0}
+.sf{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:8px 11px;font-size:13px;color:var(--text);font-family:'Onest',sans-serif;outline:none;width:100%;transition:border .15s;appearance:none;cursor:pointer}
+.sf:focus{border-color:var(--accent)}
+.nf{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:7px 10px;font-size:13px;color:var(--text);font-family:'JetBrains Mono',monospace;outline:none;width:100%;transition:border .15s}
+.nf:focus{border-color:var(--accent)}
+.nf.hl{border-color:var(--accent);background:var(--accent-bg)}
+.flabel{font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:.03em;display:block;margin-bottom:3px}
+.derived-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
+.derived-chip{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:7px 11px;display:flex;flex-direction:column;gap:2px}
+.derived-chip .dl{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+.derived-chip .dv{font-size:13px;font-weight:500;color:var(--green);font-family:'JetBrains Mono',monospace}
+.mat-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:9px 11px;margin-top:8px;display:none}
+.mat-row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px}
+.mat-row:last-child{margin-bottom:0}
+.mat-row .ml{color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:11px}
+.mat-row .mv{color:var(--text);font-family:'JetBrains Mono',monospace;font-weight:500}
+.mat-row .mv.a{color:var(--accent)}
+.op-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.op-tog{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:8px 11px;font-size:12px;color:var(--text2);cursor:pointer;text-align:left;transition:all .15s;display:flex;justify-content:space-between;align-items:center;width:100%}
+.op-tog.on{border-color:var(--accent);background:var(--accent-bg);color:var(--text)}
+.op-tog .dot{width:7px;height:7px;border-radius:50%;background:var(--border2);flex-shrink:0}
+.op-tog.on .dot{background:var(--accent)}
+/* result panel */
+.rh{font-size:12px;font-weight:600;color:var(--text);font-family:'JetBrains Mono',monospace;margin-bottom:6px}
+.rl{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px}
+.rl:last-child{border-bottom:none}
+.rl .rn{color:var(--text2)}
+.rl .rv{color:var(--text);font-family:'JetBrains Mono',monospace;font-weight:500}
+.rl.sub{padding:3px 0 3px 10px}
+.rl.sub .rn{font-size:11px;color:var(--text3)}
+.rl.sub .rv{font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+.rl.total{border-top:1px solid var(--border2);border-bottom:none;padding-top:10px;margin-top:4px}
+.rl.total .rn{font-size:14px;font-weight:500;color:var(--text)}
+.rl.total .rv{font-size:22px;font-weight:500;color:var(--green);font-family:'JetBrains Mono',monospace}
+.warn-card{background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:var(--r);padding:7px 11px;font-size:11px;color:var(--amber)}
+.bar-wrap{background:var(--bg3);border-radius:var(--r);padding:9px 11px}
+.bar-title{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:5px;letter-spacing:.04em;text-transform:uppercase}
+.bar-stack{height:7px;border-radius:4px;overflow:hidden;display:flex;gap:1px;margin-bottom:5px}
+.bar-seg{height:100%;transition:flex .3s}
+.bar-legend{display:flex;flex-wrap:wrap;gap:6px}
+.bleg{display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+.bleg-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.profit-note{font-size:11px;color:var(--text3);text-align:center;font-family:'JetBrains Mono',monospace;padding-top:2px}
+
+/* ══ TESTER ══ */
+.tester-wrap{flex:1;overflow-y:auto;padding:1.25rem 1.5rem}
+/* login */
+.login-box{max-width:340px;margin:2.5rem auto;text-align:center}
+.login-title{font-size:18px;font-weight:500;margin-bottom:6px}
+.login-sub{font-size:13px;color:var(--text2);margin-bottom:1.25rem;line-height:1.5}
+.login-inp{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:9px 12px;font-size:14px;font-family:'Onest',sans-serif;color:var(--text);outline:none;transition:border .15s;margin-bottom:8px}
+.login-inp:focus{border-color:var(--accent)}
+.login-btn{width:100%;padding:9px;border-radius:var(--r);border:none;background:var(--accent);color:#fff;font-size:14px;font-family:'Onest',sans-serif;font-weight:500;cursor:pointer;transition:opacity .15s}
+.login-btn:hover{opacity:.88}
+.login-note{font-size:11px;color:var(--text3);margin-top:8px;line-height:1.5}
+/* tester header */
+.test-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px}
+.test-user{background:var(--accent-bg);border-radius:var(--r);padding:4px 10px;font-size:12px;color:var(--accent);font-family:'JetBrains Mono',monospace;display:flex;align-items:center;gap:5px}
+.test-actions{display:flex;gap:6px}
+.lb-btn{padding:5px 11px;border-radius:var(--r);border:1px solid var(--border2);background:var(--bg3);cursor:pointer;font-size:12px;color:var(--text2);font-family:'Onest',sans-serif;display:flex;align-items:center;gap:4px;transition:all .15s}
+.lb-btn:hover{background:var(--bg4)}
+.logout-btn{padding:5px 9px;border-radius:var(--r);border:1px solid var(--border);background:transparent;cursor:pointer;font-size:11px;color:var(--text3);font-family:'Onest',sans-serif;transition:all .15s}
+.logout-btn:hover{color:var(--text2)}
+.prog-row{display:flex;align-items:center;gap:10px;margin-bottom:1.1rem}
+.prog-bg{flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;background:var(--green);border-radius:3px;transition:width .4s}
+.prog-lbl{font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;min-width:48px;text-align:right}
+/* leaderboard */
+.lb-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:1rem 1.25rem;margin-bottom:1rem}
+.lb-panel-title{font-size:13px;font-weight:500;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.lb-close{font-size:11px;color:var(--text3);cursor:pointer;padding:2px 7px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);font-family:'Onest',sans-serif}
+.lb-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
+.lb-row:last-child{border-bottom:none}
+.lb-rank{font-family:'JetBrains Mono',monospace;font-weight:500;min-width:22px;color:var(--text3)}
+.lb-name{flex:1;font-weight:500;font-family:'JetBrains Mono',monospace;font-size:12px}
+.lb-bar-bg{flex:2;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden}
+.lb-bar-fill{height:100%;background:var(--green);border-radius:2px}
+.lb-pass{color:var(--green);font-family:'JetBrains Mono',monospace;font-size:11px;min-width:36px;text-align:right}
+.lb-fail{color:var(--red);font-family:'JetBrains Mono',monospace;font-size:11px;min-width:28px;text-align:right}
+/* test groups & cards */
+.tgroup{margin-bottom:1.1rem}
+.tg-hdr{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:6px;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;gap:6px}
+.tg-badge{background:var(--bg3);border-radius:4px;padding:1px 6px;font-size:10px}
+.tcard{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);margin-bottom:5px;overflow:hidden;transition:border-color .15s}
+.tcard.pass{border-color:var(--green-border)}
+.tcard.fail{border-color:var(--red-border)}
+.tc-hdr{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;cursor:pointer;user-select:none}
+.tc-status{width:19px;height:19px;border-radius:50%;border:1.5px solid var(--border2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:11px;transition:all .2s}
+.tc-status.pass{background:var(--green-bg);border-color:var(--green-border);color:var(--green)}
+.tc-status.fail{background:var(--red-bg);border-color:var(--red-border);color:var(--red)}
+.tc-title{font-size:13px;font-weight:500;flex:1;line-height:1.4}
+.tc-tag{font-size:10px;font-weight:600;font-family:'JetBrains Mono',monospace;padding:2px 6px;border-radius:4px;flex-shrink:0}
+.tag-f{background:var(--accent-bg);color:var(--accent)}
+.tag-e{background:var(--amber-bg);color:var(--amber)}
+.tag-r{background:var(--green-bg);color:var(--green)}
+.tag-u{background:var(--bg3);color:var(--text3);border:1px solid var(--border)}
+.who-row{padding:0 12px 4px 40px;display:flex;flex-wrap:wrap;gap:4px;min-height:0}
+.who-chip{font-size:10px;font-family:'JetBrains Mono',monospace;padding:2px 6px;border-radius:8px;border:1px solid var(--border);color:var(--text3);background:var(--bg3)}
+.who-chip.pass{background:var(--green-bg);border-color:var(--green-border);color:var(--green)}
+.who-chip.fail{background:var(--red-bg);border-color:var(--red-border);color:var(--red)}
+.tbody{padding:0 12px 10px 40px;display:none}
+.tbody.open{display:block}
+.scenario{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:9px 11px;margin-bottom:7px;font-size:12px;line-height:1.7}
+.sc-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:5px;font-family:'JetBrains Mono',monospace}
+.chip-row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:5px}
+.chip{background:var(--bg4);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2)}
+.chip b{color:var(--text);font-weight:500}
+.exp{color:var(--text2);font-size:12px}
+.exp b{color:var(--green);font-family:'JetBrains Mono',monospace;font-weight:500}
+.hint{color:var(--amber);font-size:11px;margin-top:3px}
+.got-row{display:flex;align-items:center;gap:8px;margin-top:7px}
+.got-inp{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:5px 9px;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--text);outline:none;width:140px;transition:border .15s}
+.got-inp:focus{border-color:var(--accent)}
+.got-lbl{font-size:12px;color:var(--text2)}
+.note-inp{width:100%;margin-top:7px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:6px 9px;font-size:12px;font-family:'Onest',sans-serif;color:var(--text);outline:none;resize:vertical;min-height:42px;transition:border .15s}
+.note-inp:focus{border-color:var(--accent)}
+.note-inp::placeholder{color:var(--text3)}
+.btn-row{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap}
+.pass-btn{background:var(--green-bg)!important;border-color:var(--green-border)!important;color:var(--green)!important}
+.fail-btn{background:var(--red-bg)!important;border-color:var(--red-border)!important;color:var(--red)!important}
+/* summary */
+.summary{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:.9rem 1.1rem;margin-top:1rem}
+.sg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stat{text-align:center}
+.stat-n{font-size:20px;font-weight:500;font-family:'JetBrains Mono',monospace}
+.stat-l{font-size:11px;color:var(--text3);margin-top:1px}
+.stat.pass .stat-n{color:var(--green)}
+.stat.fail .stat-n{color:var(--red)}
+.stat.skip .stat-n{color:var(--text3)}
+.ask-btn{display:flex;align-items:center;gap:6px;padding:6px 13px;border-radius:var(--r);border:1px solid var(--border2);background:var(--bg3);cursor:pointer;font-size:12px;font-family:'Onest',sans-serif;color:var(--text2);transition:all .15s;margin-top:9px}
+.ask-btn:hover{background:var(--bg4)}
+.api-status{font-size:11px;font-family:'JetBrains Mono',monospace;padding:3px 8px;border-radius:4px;border:1px solid var(--border)}
+.api-status.ok{background:var(--green-bg);border-color:var(--green-border);color:var(--green)}
+.api-status.err{background:var(--red-bg);border-color:var(--red-border);color:var(--red)}
+.api-status.loading{background:var(--bg3);color:var(--text3)}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">my-3d<span>/</span>calc</div>
+  <div class="tab-switch">
+    <button class="tab-btn on"  onclick="sv('admin',this)">Настройки</button>
+    <button class="tab-btn"     onclick="sv('client',this)">Заказ</button>
+    <button class="tab-btn"     onclick="sv('tester',this)">Тестирование</button>
+  </div>
+  <div class="topbar-right" id="save-status">сохранено</div>
+</div>
+
+<!-- ════════════ ADMIN ════════════ -->
+<div class="view on" id="view-admin">
+<div class="admin">
+  <div class="admin-nav">
+    <div class="nav-section">Оборудование</div>
+    <div class="nav-item on" onclick="sp('printers',this)"><i class="ti ti-printer"></i>Принтеры</div>
+    <div class="nav-item"    onclick="sp('materials',this)"><i class="ti ti-cylinder"></i>Материалы</div>
+    <div class="nav-section">Операционные</div>
+    <div class="nav-item" onclick="sp('overhead',this)"><i class="ti ti-building"></i>Накладные</div>
+    <div class="nav-item" onclick="sp('labor',this)"><i class="ti ti-user"></i>Оператор</div>
+    <div class="nav-section">Ценообразование</div>
+    <div class="nav-item" onclick="sp('profiles',this)"><i class="ti ti-tag"></i>Профили цены</div>
+    <div class="nav-item" onclick="sp('postprocess',this)"><i class="ti ti-brush"></i>Постобработка</div>
+  </div>
+  <div class="admin-content">
+
+    <!-- PRINTERS -->
+    <div class="admin-panel on" id="panel-printers">
+      <div class="panel-title">Принтеры</div>
+      <div class="panel-sub">Оборудование, амортизация, ставка машино-часа</div>
+      <div class="card">
+        <div class="ctitle">Добавить принтер</div>
+        <div class="frow c2"><div class="field"><label>Название</label><input id="p-name" placeholder="Bambu Lab X1C"/></div><div class="field"><label>Технология</label><select id="p-tech"><option>FDM</option><option>SLA</option><option>MSLA</option><option>SLS</option><option>MJF</option></select></div></div>
+        <div class="frow c4">
+          <div class="field"><label>Стоимость (₽)</label><input id="p-cost" type="number" placeholder="150000"/></div>
+          <div class="field"><label>Срок службы (лет)</label><input id="p-life" type="number" placeholder="4"/></div>
+          <div class="field"><label>Загрузка (%)</label><input id="p-load" type="number" placeholder="60"/></div>
+          <div class="field"><label>Мощность (Вт)</label><input id="p-watt" type="number" placeholder="300"/></div>
+        </div>
+        <div class="frow c2"><div class="field"><label>Обслуживание (₽/год)</label><input id="p-maint" type="number" placeholder="15000"/></div><div class="field"><label>Тариф электр. (₽/кВтч)</label><input id="p-kwh" type="number" placeholder="6"/></div></div>
+        <button class="btn primary" onclick="addPrinter()"><i class="ti ti-plus"></i>Добавить</button>
+      </div>
+      <div id="printer-list"></div>
+    </div>
+
+    <!-- MATERIALS -->
+    <div class="admin-panel" id="panel-materials">
+      <div class="panel-title">Материалы</div>
+      <div class="panel-sub">Нити, смолы, порошки — цена за кг и плотность (г/см³) для расчёта</div>
+      <div class="info-banner"><b>Логика:</b> объём (см³) × плотность (г/см³) = масса (г) → × цена/кг = стоимость материала</div>
+      <div class="card">
+        <div class="ctitle">Добавить материал</div>
+        <div class="frow c2"><div class="field"><label>Название</label><input id="m-name" placeholder="PETG Black 1kg"/></div><div class="field"><label>Тип</label><select id="m-tech"><option value="FDM">FDM нить</option><option value="SLA">SLA смола</option><option value="SLS">SLS порошок</option><option value="MJF">MJF порошок</option></select></div></div>
+        <div class="frow c4">
+          <div class="field"><label>Цена (₽/кг)</label><input id="m-price" type="number" placeholder="1800" oninput="previewMat()"/></div>
+          <div class="field"><label>Плотность (г/см³)</label><input id="m-dens" type="number" step="0.01" placeholder="1.24" oninput="previewMat()"/><span class="hint">PLA≈1.24 PETG≈1.27 ABS≈1.05 SLA≈1.10 PA12≈1.01</span></div>
+          <div class="field"><label>Fail rate (%)</label><input id="m-fail" type="number" placeholder="5"/></div>
+          <div class="field"><label>₽/см³ (авто)</label><input id="m-percc" class="readonly" readonly/></div>
+        </div>
+        <div class="frow c1"><div class="field"><label>Заметки</label><input id="m-note" placeholder="Примечания..."/></div></div>
+        <button class="btn primary" onclick="addMaterial()"><i class="ti ti-plus"></i>Добавить</button>
+      </div>
+      <div id="material-list"></div>
+    </div>
+
+    <!-- OVERHEAD -->
+    <div class="admin-panel" id="panel-overhead">
+      <div class="panel-title">Накладные расходы</div>
+      <div class="panel-sub">Ежемесячные расходы → ставка на машино-час</div>
+      <div class="card">
+        <div class="ctitle">Расходы в месяц (₽)</div>
+        <div class="frow c2"><div class="field"><label>Аренда</label><input id="oh-rent" type="number" placeholder="40000" oninput="saveOH()"/></div><div class="field"><label>Коммунальные</label><input id="oh-util" type="number" placeholder="5000" oninput="saveOH()"/></div></div>
+        <div class="frow c2"><div class="field"><label>Интернет + связь</label><input id="oh-inet" type="number" placeholder="3000" oninput="saveOH()"/></div><div class="field"><label>ПО / подписки</label><input id="oh-sw" type="number" placeholder="2000" oninput="saveOH()"/></div></div>
+        <div class="frow c2"><div class="field"><label>Маркетинг</label><input id="oh-mkt" type="number" placeholder="5000" oninput="saveOH()"/></div><div class="field"><label>Банк + комиссии</label><input id="oh-bank" type="number" placeholder="2000" oninput="saveOH()"/></div></div>
+        <div class="frow c2"><div class="field"><label>Страх. взносы</label><input id="oh-ins" type="number" placeholder="4200" oninput="saveOH()"/></div><div class="field"><label>Прочее</label><input id="oh-misc" type="number" placeholder="3000" oninput="saveOH()"/></div></div>
+        <div class="divider"></div>
+        <div class="frow c2"><div class="field"><label>Машино-часов в месяц</label><input id="oh-hours" type="number" placeholder="600" oninput="saveOH()"/></div><div class="field"><label>Накладные / час (авто)</label><input id="oh-result" class="readonly" readonly/></div></div>
+      </div>
+    </div>
+
+    <!-- LABOR -->
+    <div class="admin-panel" id="panel-labor">
+      <div class="panel-title">Оператор</div>
+      <div class="panel-sub">Реальная ставка через зарплату и КПД</div>
+      <div class="card">
+        <div class="frow c2"><div class="field"><label>ЗП на руки (₽/мес)</label><input id="lab-salary" type="number" placeholder="60000" oninput="saveLabor()"/></div><div class="field"><label>Налоги + взносы (%)</label><input id="lab-tax" type="number" placeholder="30" oninput="saveLabor()"/></div></div>
+        <div class="frow c2"><div class="field"><label>Рабочих дней/мес</label><input id="lab-days" type="number" placeholder="22" oninput="saveLabor()"/></div><div class="field"><label>Часов в день</label><input id="lab-hrs" type="number" placeholder="8" oninput="saveLabor()"/></div></div>
+        <div class="frow c2"><div class="field"><label>КПД (%)</label><input id="lab-eff" type="number" placeholder="70" oninput="saveLabor()"/></div><div class="field"><label>Ставка / час (авто)</label><input id="lab-result" class="readonly" readonly/></div></div>
+        <div class="divider"></div>
+        <div class="ctitle">Типовое время на заказ (мин)</div>
+        <div class="frow c4">
+          <div class="field"><label>Переписка</label><input id="lab-t1" type="number" placeholder="15" oninput="saveLabor()"/></div>
+          <div class="field"><label>Слайсинг</label><input id="lab-t2" type="number" placeholder="15" oninput="saveLabor()"/></div>
+          <div class="field"><label>Запуск</label><input id="lab-t3" type="number" placeholder="8" oninput="saveLabor()"/></div>
+          <div class="field"><label>Съём + QC</label><input id="lab-t4" type="number" placeholder="10" oninput="saveLabor()"/></div>
+        </div>
+        <div class="frow c2"><div class="field"><label>Упаковка + отправка</label><input id="lab-t5" type="number" placeholder="10" oninput="saveLabor()"/></div><div class="field"><label>Итого мин (авто)</label><input id="lab-total" class="readonly" readonly/></div></div>
+      </div>
+    </div>
+
+    <!-- PROFILES -->
+    <div class="admin-panel" id="panel-profiles">
+      <div class="panel-title">Профили цены</div>
+      <div class="panel-sub">Наценка, налог, НДС и минималка по типу клиента</div>
+      <div class="card">
+        <div class="frow c2"><div class="field"><label>Название</label><input id="pr-name" placeholder="Розница"/></div><div class="field"><label>Наценка (%)</label><input id="pr-markup" type="number" placeholder="80"/></div></div>
+        <div class="frow c3"><div class="field"><label>Налог с выручки (%)</label><input id="pr-tax" type="number" placeholder="6"/></div><div class="field"><label>НДС (%)</label><input id="pr-vat" type="number" placeholder="0"/></div><div class="field"><label>Мин. заказ (₽)</label><input id="pr-min" type="number" placeholder="700"/></div></div>
+        <button class="btn primary" onclick="addProfile()"><i class="ti ti-plus"></i>Добавить</button>
+      </div>
+      <div id="profile-list"></div>
+    </div>
+
+    <!-- POSTPROCESS -->
+    <div class="admin-panel" id="panel-postprocess">
+      <div class="panel-title">Постобработка</div>
+      <div class="panel-sub">Операции с фиксированной ценой</div>
+      <div class="card">
+        <div class="frow c2"><div class="field"><label>Название</label><input id="pp-name" placeholder="Шлифовка финишная"/></div><div class="field"><label>Цена (₽)</label><input id="pp-price" type="number" placeholder="300"/></div></div>
+        <div class="frow c1"><div class="field"><label>Описание</label><input id="pp-desc" placeholder="P320–P800, под покраску"/></div></div>
+        <button class="btn primary" onclick="addPP()"><i class="ti ti-plus"></i>Добавить</button>
+      </div>
+      <div id="pp-list"></div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- ════════════ CLIENT ════════════ -->
+<div class="view" id="view-client">
+<div class="client">
+  <div class="client-form">
+
+    <div class="csection">
+      <div class="csec-title">Технология и материал</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div><label class="flabel">Принтер</label><select class="sf" id="c-printer" onchange="onPC()"></select></div>
+        <div><label class="flabel">Материал</label><select class="sf" id="c-material" onchange="onMC()"></select></div>
+      </div>
+      <div class="mat-card" id="mat-card">
+        <div class="mat-row"><span class="ml">Плотность</span><span class="mv a" id="mat-dens-d">—</span></div>
+        <div class="mat-row"><span class="ml">Цена / см³</span><span class="mv" id="mat-pcc-d">—</span></div>
+        <div class="mat-row"><span class="ml">Fail rate</span><span class="mv" id="mat-fail-d">—</span></div>
+      </div>
+    </div>
+
+    <div class="csection">
+      <div class="csec-title">Объём из слайсера</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+        <div><label class="flabel">Объём детали (см³)</label><input class="nf hl" id="c-vol" type="number" step="0.1" placeholder="32.5" oninput="calcOrder()"/></div>
+        <div><label class="flabel">Поддержки (% объёма)</label><input class="nf" id="c-supp" type="number" placeholder="0" value="0" oninput="calcOrder()"/></div>
+        <div><label class="flabel">Деталей в запуске</label><input class="nf" id="c-qty" type="number" placeholder="1" value="1" oninput="calcOrder()"/></div>
+      </div>
+      <div class="derived-row">
+        <div class="derived-chip"><span class="dl">С поддержками</span><span class="dv" id="d-vol">— см³</span></div>
+        <div class="derived-chip"><span class="dl">Масса детали</span><span class="dv" id="d-mass">— г</span></div>
+        <div class="derived-chip"><span class="dl">Стоимость матер.</span><span class="dv" id="d-mcost">—</span></div>
+      </div>
+    </div>
+
+    <div class="csection">
+      <div class="csec-title">Параметры печати</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div><label class="flabel">Время печати (ч)</label><input class="nf" id="c-time" type="number" step="0.5" placeholder="6" oninput="calcOrder()"/></div>
+        <div><label class="flabel">Сложность</label><select class="sf" id="c-complexity" onchange="calcOrder()"><option value="1">Простая</option><option value="1.5" selected>Средняя</option><option value="2">Сложная</option><option value="3">Очень сложная</option></select></div>
+        <div><label class="flabel">Профиль клиента</label><select class="sf" id="c-profile" onchange="calcOrder()"></select></div>
+      </div>
+    </div>
+
+    <div class="csection">
+      <div class="csec-title">Постобработка</div>
+      <div class="op-grid" id="c-pp-ops"></div>
+    </div>
+
+    <div class="csection">
+      <div class="csec-title">Доставка и прочее</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><label class="flabel">Доставка (₽)</label><input class="nf" id="c-ship" type="number" placeholder="0" value="0" oninput="calcOrder()"/></div>
+        <div><label class="flabel">Доп. работы (₽)</label><input class="nf" id="c-extra" type="number" placeholder="0" value="0" oninput="calcOrder()"/></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="client-result">
+    <div>
+      <div class="rh">Себестоимость</div>
+      <div class="rl sub"><span class="rn">Материал (<span id="rs-mass">—</span> г)</span><span class="rv" id="res-mat">—</span></div>
+      <div class="rl sub"><span class="rn">Машинное время</span><span class="rv" id="res-mach">—</span></div>
+      <div class="rl sub"><span class="rn">Расходники</span><span class="rv" id="res-cons">—</span></div>
+      <div class="rl sub"><span class="rn">Электро + накладные</span><span class="rv" id="res-infra">—</span></div>
+      <div class="rl sub"><span class="rn">Труд оператора</span><span class="rv" id="res-labor">—</span></div>
+      <div class="rl sub"><span class="rn">Надбавка за брак</span><span class="rv" id="res-risk">—</span></div>
+      <div class="rl sub"><span class="rn">Постобработка</span><span class="rv" id="res-post">—</span></div>
+    </div>
+    <div class="rl"><span class="rn" style="font-weight:500;color:var(--text)">Полная себестоимость</span><span class="rv" id="res-cost" style="color:var(--text)">—</span></div>
+    <div class="divider" style="margin:3px 0"></div>
+    <div>
+      <div class="rh">Ценообразование</div>
+      <div class="rl sub"><span class="rn">Наценка</span><span class="rv" id="res-markup">—</span></div>
+      <div class="rl sub"><span class="rn">Налог с выручки</span><span class="rv" id="res-tax">—</span></div>
+      <div class="rl sub"><span class="rn">НДС</span><span class="rv" id="res-vat">—</span></div>
+      <div class="rl sub"><span class="rn">Доставка</span><span class="rv" id="res-ship">—</span></div>
+    </div>
+    <div id="res-minwarn" class="warn-card" style="display:none"></div>
+    <div class="rl total"><span class="rn">Итого клиенту</span><span class="rv" id="res-final">—</span></div>
+    <div class="bar-wrap">
+      <div class="bar-title">Структура цены</div>
+      <div class="bar-stack" id="res-stack"></div>
+      <div class="bar-legend" id="res-legend"></div>
+    </div>
+    <div class="rl"><span class="rn" style="color:var(--text3);font-size:11px">Чистая прибыль</span><span class="rv" id="res-profit" style="font-size:13px;color:var(--green)">—</span></div>
+    <div class="profit-note" id="res-note"></div>
+  </div>
+</div>
+</div>
+
+<!-- ════════════ TESTER ════════════ -->
+<div class="view" id="view-tester">
+<div class="tester-wrap">
+
+  <!-- login -->
+  <div id="t-login" class="login-box" style="display:none">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);margin-bottom:1rem;letter-spacing:.04em">my-3d/calc — тестирование</div>
+    <div class="login-title">Привет, тестировщик</div>
+    <div class="login-sub">Введи никнейм — он появится в общей таблице результатов</div>
+    <input class="login-inp" id="t-nick-inp" placeholder="Твой никнейм..." maxlength="20"/>
+    <button class="login-btn" onclick="tLogin()">Начать тестирование</button>
+    <div class="login-note">Данные видны всем. Не используй личную информацию.</div>
+  </div>
+
+  <!-- main tester -->
+  <div id="t-main" style="display:none">
+    <div class="test-topbar">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="test-user"><i class="ti ti-user" style="font-size:12px"></i><span id="t-nick-d"></span></div>
+        <div class="api-status loading" id="api-status">connecting...</div>
+      </div>
+      <div class="test-actions">
+        <button class="lb-btn" onclick="toggleLB()"><i class="ti ti-trophy" style="font-size:13px"></i>Тестеры</button>
+        <button class="logout-btn" onclick="tLogout()">Сменить ник</button>
+      </div>
+    </div>
+
+    <div id="lb-panel" class="lb-panel" style="display:none">
+      <div class="lb-panel-title"><span><i class="ti ti-trophy" style="font-size:13px;margin-right:5px"></i>Таблица тестеров</span><button class="lb-close" onclick="toggleLB()">Закрыть</button></div>
+      <div id="lb-body"></div>
+    </div>
+
+    <div class="prog-row">
+      <div class="prog-bg"><div class="prog-fill" id="t-prog" style="width:0%"></div></div>
+      <div class="prog-lbl" id="t-prog-lbl">0 / 15</div>
+    </div>
+
+    <div id="t-test-list"></div>
+
+    <div class="summary">
+      <div class="sg">
+        <div class="stat"><div class="stat-n" id="t-s-total">15</div><div class="stat-l">всего</div></div>
+        <div class="stat pass"><div class="stat-n" id="t-s-pass">0</div><div class="stat-l">прошли</div></div>
+        <div class="stat fail"><div class="stat-n" id="t-s-fail">0</div><div class="stat-l">провалились</div></div>
+        <div class="stat skip"><div class="stat-n" id="t-s-skip">15</div><div class="stat-l">не проверено</div></div>
+      </div>
+      <button class="ask-btn" id="t-ask-btn" style="display:none" onclick="tAskFix()"><i class="ti ti-message-circle" style="font-size:13px"></i>Помоги исправить баги</button>
+    </div>
+  </div>
+
+</div>
+</div>
+
+</div><!-- /app -->
+
+<script>
+// ═══════════════════════════════════════════════
+// CONFIG — поменяй на свой Railway URL после деплоя
+// ═══════════════════════════════════════════════
+var API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ? 'http://localhost:3000'
+  : ''; // пустая строка = тот же хост (Railway сервает и фронт и API)
+
+// ═══════════ DB (localStorage) ═══════════
+var DB = {printers:[],materials:[],overhead:{},labor:{},profiles:[],postprocess:[]};
+
+function dbSave(){
+  localStorage.setItem('my-3d-calc-db', JSON.stringify(DB));
+  document.getElementById('save-status').textContent = 'сохранено';
+}
+function dbLoad(){
+  try{
+    var raw = localStorage.getItem('my-3d-calc-db');
+    if(raw) DB = JSON.parse(raw);
+  }catch(e){}
+  seedDefaults();
+}
+
+function seedDefaults(){
+  if(!DB.printers.length) DB.printers = [
+    {id:1,name:'Bambu X1C',tech:'FDM',cost:200000,life:4,load:65,watt:250,maint:15000,kwh:6},
+    {id:2,name:'Elegoo Saturn 3',tech:'SLA',cost:45000,life:3,load:60,watt:80,maint:5000,kwh:6}
+  ];
+  if(!DB.materials.length) DB.materials = [
+    {id:1,name:'PETG Black',tech:'FDM',price:1800,density:1.27,fail:4,note:''},
+    {id:2,name:'ABS Grey',  tech:'FDM',price:1600,density:1.05,fail:10,note:'Нужен кожух'},
+    {id:3,name:'PLA White', tech:'FDM',price:1500,density:1.24,fail:3,note:''},
+    {id:4,name:'Стандартная смола',tech:'SLA',price:4000,density:1.10,fail:8,note:''},
+    {id:5,name:'PA12 нейлон',tech:'SLS',price:6000,density:1.01,fail:3,note:''}
+  ];
+  if(!DB.overhead.hours) DB.overhead = {rent:40000,util:5000,inet:3000,sw:2000,mkt:5000,bank:2000,ins:4200,misc:3000,hours:600};
+  if(!DB.labor.salary)   DB.labor    = {salary:60000,tax:30,days:22,hrs:8,eff:70,t1:15,t2:15,t3:8,t4:10,t5:10};
+  if(!DB.profiles.length) DB.profiles = [
+    {id:1,name:'Розница',markup:80,tax:6,vat:0,min:700},
+    {id:2,name:'Малый бизнес',markup:50,tax:6,vat:0,min:500},
+    {id:3,name:'Прототип',markup:100,tax:6,vat:0,min:900},
+    {id:4,name:'Срочный',markup:130,tax:6,vat:0,min:1200}
+  ];
+  if(!DB.postprocess.length) DB.postprocess = [
+    {id:1,name:'Удаление поддержек',price:100,desc:''},
+    {id:2,name:'Шлифовка грубая',price:200,desc:'P80–P180'},
+    {id:3,name:'Шлифовка финишная',price:400,desc:'P320–P800'},
+    {id:4,name:'Грунтовка',price:250,desc:'1–2 слоя'},
+    {id:5,name:'Покраска монохром',price:500,desc:'Аэрозоль'}
+  ];
+}
+
+// ═══════════ UTILS ═══════════
+function fmt(n){return Math.round(n).toLocaleString('ru')+' ₽';}
+function fmtN(n){return Math.round(n).toLocaleString('ru');}
+function el(id){return document.getElementById(id);}
+
+// ═══════════ VIEW SWITCH ═══════════
+function sv(v,btn){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  document.querySelectorAll('.view').forEach(e=>e.classList.remove('on'));
+  el('view-'+v).classList.add('on');
+  if(v==='client') populateClient();
+  if(v==='tester') initTester();
+}
+function sp(id,e){
+  document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('on')); e.classList.add('on');
+  document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('on'));
+  el('panel-'+id).classList.add('on');
+}
+
+// ═══════════ PRINTERS ═══════════
+function printerRate(p){
+  var h = p.life*365*(p.load/100)*16;
+  var depr = (p.cost*0.9)/Math.max(h,1);
+  var maint = p.maint/Math.max(h,1);
+  var elec = (p.watt/1000)*(p.kwh||6);
+  return depr+maint+elec;
+}
+function addPrinter(){
+  var name=el('p-name').value.trim(); if(!name)return;
+  DB.printers.push({id:Date.now(),name,tech:el('p-tech').value,cost:+el('p-cost').value||150000,life:+el('p-life').value||4,load:+el('p-load').value||60,watt:+el('p-watt').value||300,maint:+el('p-maint').value||10000,kwh:+el('p-kwh').value||6});
+  ['p-name','p-cost','p-life','p-load','p-watt','p-maint','p-kwh'].forEach(id=>el(id).value='');
+  renderPrinters(); dbSave();
+}
+function delPrinter(id){DB.printers=DB.printers.filter(p=>p.id!==id);renderPrinters();dbSave();}
+function renderPrinters(){
+  var e=el('printer-list');
+  if(!DB.printers.length){e.innerHTML='<div class="empty">Нет принтеров</div>';return;}
+  e.innerHTML=DB.printers.map(p=>`<div class="list-item"><div><div class="li-name">${p.name}</div><div class="li-meta">${printerRate(p).toFixed(1)} ₽/ч · ${p.watt} Вт · ${p.life} лет · ${p.load}% загр.</div></div><span class="tag blue">${p.tech}</span><div class="li-actions"><button class="btn sm danger" onclick="delPrinter(${p.id})"><i class="ti ti-trash"></i></button></div></div>`).join('');
+}
+
+// ═══════════ MATERIALS ═══════════
+function previewMat(){
+  var pr=+el('m-price').value||0, dn=+el('m-dens').value||0;
+  el('m-percc').value = dn>0 ? (pr*dn/1000).toFixed(3)+' ₽/см³' : '';
+}
+function addMaterial(){
+  var name=el('m-name').value.trim(); if(!name)return;
+  DB.materials.push({id:Date.now(),name,tech:el('m-tech').value,price:+el('m-price').value||1800,density:+el('m-dens').value||1.1,fail:+el('m-fail').value||5,note:el('m-note').value});
+  ['m-name','m-price','m-dens','m-fail','m-note'].forEach(id=>el(id).value='');
+  el('m-percc').value=''; renderMaterials(); dbSave();
+}
+function delMaterial(id){DB.materials=DB.materials.filter(m=>m.id!==id);renderMaterials();dbSave();}
+function renderMaterials(){
+  var e=el('material-list');
+  if(!DB.materials.length){e.innerHTML='<div class="empty">Нет материалов</div>';return;}
+  e.innerHTML=DB.materials.map(m=>{
+    var pcc=(m.price*m.density/1000).toFixed(3);
+    var tc=m.tech==='FDM'?'blue':m.tech==='SLA'?'green':'amber';
+    return `<div class="list-item"><div><div class="li-name">${m.name}</div><div class="li-meta">${fmtN(m.price)} ₽/кг · ρ=${m.density} · ${pcc} ₽/см³ · брак ${m.fail}%${m.note?' · '+m.note:''}</div></div><span class="tag ${tc}">${m.tech}</span><div class="li-actions"><button class="btn sm danger" onclick="delMaterial(${m.id})"><i class="ti ti-trash"></i></button></div></div>`;
+  }).join('');
+}
+
+// ═══════════ OVERHEAD ═══════════
+function saveOH(){
+  var o=DB.overhead;
+  ['rent','util','inet','sw','mkt','bank','ins','misc','hours'].forEach(k=>{o[k]=+el('oh-'+k).value||0;});
+  var tot=o.rent+o.util+o.inet+o.sw+o.mkt+o.bank+o.ins+o.misc;
+  el('oh-result').value = o.hours>0 ? (tot/o.hours).toFixed(2)+' ₽/ч' : '—';
+  dbSave();
+}
+function renderOH(){
+  var o=DB.overhead;
+  ['rent','util','inet','sw','mkt','bank','ins','misc','hours'].forEach(k=>{if(el('oh-'+k)&&o[k])el('oh-'+k).value=o[k];});
+  saveOH();
+}
+
+// ═══════════ LABOR ═══════════
+function saveLabor(){
+  var l=DB.labor;
+  ['salary','tax','days','hrs','eff','t1','t2','t3','t4','t5'].forEach(k=>{l[k]=+el('lab-'+k).value||0;});
+  var full=l.salary*(1+(l.tax||30)/100);
+  var ph=(l.days||22)*(l.hrs||8)*((l.eff||70)/100);
+  el('lab-result').value = ph>0 ? (full/ph).toFixed(1)+' ₽/ч' : '—';
+  el('lab-total').value = (l.t1+l.t2+l.t3+l.t4+l.t5)+' мин';
+  dbSave();
+}
+function renderLabor(){
+  var l=DB.labor;
+  ['salary','tax','days','hrs','eff','t1','t2','t3','t4','t5'].forEach(k=>{if(el('lab-'+k)&&l[k]!==undefined)el('lab-'+k).value=l[k];});
+  saveLabor();
+}
+
+// ═══════════ PROFILES ═══════════
+function addProfile(){
+  var name=el('pr-name').value.trim(); if(!name)return;
+  DB.profiles.push({id:Date.now(),name,markup:+el('pr-markup').value||50,tax:+el('pr-tax').value||6,vat:+el('pr-vat').value||0,min:+el('pr-min').value||500});
+  ['pr-name','pr-markup','pr-tax','pr-vat','pr-min'].forEach(id=>el(id).value='');
+  renderProfiles(); dbSave();
+}
+function delProfile(id){DB.profiles=DB.profiles.filter(p=>p.id!==id);renderProfiles();dbSave();}
+function renderProfiles(){
+  var e=el('profile-list');
+  if(!DB.profiles.length){e.innerHTML='<div class="empty">Нет профилей</div>';return;}
+  e.innerHTML=DB.profiles.map(p=>`<div class="list-item"><div><div class="li-name">${p.name}</div><div class="li-meta">+${p.markup}% · налог ${p.tax}%${p.vat?' · НДС '+p.vat+'%':''} · мин. ${fmtN(p.min)} ₽</div></div><div class="li-actions"><button class="btn sm danger" onclick="delProfile(${p.id})"><i class="ti ti-trash"></i></button></div></div>`).join('');
+}
+
+// ═══════════ POSTPROCESS ═══════════
+function addPP(){
+  var name=el('pp-name').value.trim(); if(!name)return;
+  DB.postprocess.push({id:Date.now(),name,price:+el('pp-price').value||100,desc:el('pp-desc').value});
+  ['pp-name','pp-price','pp-desc'].forEach(id=>el(id).value='');
+  renderPP(); dbSave();
+}
+function delPP(id){DB.postprocess=DB.postprocess.filter(p=>p.id!==id);renderPP();dbSave();}
+function renderPP(){
+  var e=el('pp-list');
+  if(!DB.postprocess.length){e.innerHTML='<div class="empty">Нет операций</div>';return;}
+  e.innerHTML=DB.postprocess.map(p=>`<div class="list-item"><div><div class="li-name">${p.name}</div><div class="li-meta">${fmtN(p.price)} ₽${p.desc?' · '+p.desc:''}</div></div><div class="li-actions"><button class="btn sm danger" onclick="delPP(${p.id})"><i class="ti ti-trash"></i></button></div></div>`).join('');
+}
+
+// ═══════════ CLIENT ═══════════
+var selPP = {};
+function populateClient(){
+  el('c-printer').innerHTML = DB.printers.map(p=>`<option value="${p.id}">${p.name} (${p.tech})</option>`).join('');
+  el('c-material').innerHTML = DB.materials.map(m=>`<option value="${m.id}">${m.name} — ρ=${m.density}</option>`).join('');
+  el('c-profile').innerHTML = DB.profiles.map(p=>`<option value="${p.id}">${p.name} (+${p.markup}%)</option>`).join('');
+  var ppOps=el('c-pp-ops');
+  if(!DB.postprocess.length){ppOps.innerHTML='<div style="font-size:12px;color:var(--text3)">Добавь операции в настройках</div>';} else {
+    ppOps.innerHTML=DB.postprocess.map(p=>`<button class="op-tog" id="pp-${p.id}" onclick="togPP(${p.id},this)"><span>${p.name}<br><span style="font-size:10px;color:var(--text3)">${fmtN(p.price)} ₽${p.desc?' · '+p.desc:''}</span></span><span class="dot"></span></button>`).join('');
+  }
+  onMC(); calcOrder();
+}
+function onPC(){calcOrder();}
+function onMC(){
+  var mat=DB.materials.find(m=>m.id===+el('c-material').value);
+  var card=el('mat-card'); if(!mat){card.style.display='none';return;}
+  card.style.display='block';
+  el('mat-dens-d').textContent=mat.density+' г/см³';
+  el('mat-pcc-d').textContent=(mat.price*mat.density/1000).toFixed(3)+' ₽/см³';
+  el('mat-fail-d').textContent=mat.fail+'%';
+  calcOrder();
+}
+function togPP(id,btn){
+  var op=DB.postprocess.find(p=>p.id===id);
+  if(selPP[id]) delete selPP[id]; else if(op) selPP[id]=op.price;
+  btn.classList.toggle('on',!!selPP[id]);
+  btn.querySelector('.dot').style.background=selPP[id]?'var(--accent)':'var(--border2)';
+  calcOrder();
+}
+function laborRate(){
+  var l=DB.labor; if(!l.salary)return 500;
+  var full=l.salary*(1+(l.tax||30)/100);
+  var ph=(l.days||22)*(l.hrs||8)*((l.eff||70)/100);
+  return ph>0?full/ph:500;
+}
+function laborTime(){var l=DB.labor;return (l.t1||0)+(l.t2||0)+(l.t3||0)+(l.t4||0)+(l.t5||0)||48;}
+function ohPerHr(){
+  var o=DB.overhead; if(!o.hours)return 0;
+  var tot=(o.rent||0)+(o.util||0)+(o.inet||0)+(o.sw||0)+(o.mkt||0)+(o.bank||0)+(o.ins||0)+(o.misc||0);
+  return o.hours>0?tot/o.hours:0;
+}
+function calcOrder(){
+  var printer=DB.printers.find(p=>p.id===+el('c-printer').value);
+  var mat=DB.materials.find(m=>m.id===+el('c-material').value);
+  var profile=DB.profiles.find(p=>p.id===+el('c-profile').value);
+  var vol=+el('c-vol').value||0;
+  var supp=+el('c-supp').value||0;
+  var qty=+el('c-qty').value||1;
+  var time=+el('c-time').value||0;
+  var complexity=+el('c-complexity').value||1.5;
+  var ship=+el('c-ship').value||0;
+  var extra=+el('c-extra').value||0;
+  var density=mat?mat.density:1;
+  var failRate=mat?(mat.fail||5):5;
+  var priceKg=mat?(mat.price||1800):1800;
+  var volS=vol*(1+supp/100);
+  var massG=volS*density;
+  var massWaste=massG*(1+failRate/100);
+  var matCost=(massWaste/1000)*priceKg;
+  el('d-vol').textContent=volS.toFixed(1)+' см³';
+  el('d-mass').textContent=massG.toFixed(1)+' г';
+  el('d-mcost').textContent=vol>0?fmt(matCost):'—';
+  if(!printer||!mat||!profile||vol===0||time===0){
+    ['res-mat','res-mach','res-cons','res-infra','res-labor','res-risk','res-post','res-cost','res-markup','res-tax','res-vat','res-ship','res-final','res-profit'].forEach(id=>{var e=el(id);if(e)e.textContent='—';});
+    el('rs-mass').textContent='—'; el('res-note').textContent='';
+    el('res-minwarn').style.display='none';
+    el('res-stack').innerHTML=''; el('res-legend').innerHTML=''; return;
+  }
+  el('rs-mass').textContent=massG.toFixed(1);
+  var machCost=(time*printerRate(printer))/qty;
+  var consCost=(time*2)/qty;
+  var infraCost=(time*(ohPerHr()+(printer.watt/1000)*(printer.kwh||6)))/qty;
+  var labCost=(laborTime()*complexity/60)*laborRate()/qty;
+  var f=failRate/100;
+  var base=matCost+machCost+consCost+infraCost+labCost;
+  var riskCost=base*f/(1-f);
+  var ppTotal=Object.values(selPP).reduce((a,b)=>a+b,0)+extra;
+  var cost=base+riskCost+ppTotal;
+  var mk=profile.markup/100, tx=profile.tax/100, vt=(profile.vat||0)/100;
+  var pNoVat=cost*(1+mk)/(1-tx);
+  var mkAmt=pNoVat-cost, txAmt=pNoVat*tx, vtAmt=pNoVat*vt;
+  var fc=pNoVat+vtAmt+ship;
+  var minP=profile.min+ship;
+  var final=Math.max(fc,minP);
+  var isMin=fc<minP;
+  var profit=pNoVat-cost-txAmt;
+  var margin=final>0?Math.round(profit/final*100):0;
+  var s=(id,v)=>{var e=el(id);if(e)e.textContent=v;};
+  s('res-mat',fmt(matCost)); s('res-mach',fmt(machCost)); s('res-cons',fmt(consCost));
+  s('res-infra',fmt(infraCost)); s('res-labor',fmt(labCost)); s('res-risk',fmt(riskCost));
+  s('res-post',ppTotal>0?fmt(ppTotal):'—'); s('res-cost',fmt(cost));
+  s('res-markup','+'+fmt(mkAmt)); s('res-tax','−'+fmt(txAmt));
+  s('res-vat',vtAmt>0?'+'+fmt(vtAmt):'—'); s('res-ship',ship>0?'+'+fmt(ship):'—');
+  s('res-final',fmt(Math.round(final))); s('res-profit',fmt(profit));
+  s('res-note','маржинальность '+margin+'%');
+  el('res-minwarn').style.display=isMin?'block':'none';
+  if(isMin)el('res-minwarn').textContent='Мин. цена профиля '+fmtN(profile.min)+' ₽ — применена';
+  var segs=[
+    {l:'Материал',v:matCost,c:'#378ADD'},{l:'Машина',v:machCost+consCost,c:'#1D9E75'},
+    {l:'Накладные',v:infraCost,c:'#BA7517'},{l:'Труд',v:labCost,c:'#7F77DD'},
+    {l:'Риск',v:riskCost,c:'#E24B4A'},{l:'Постобр.',v:ppTotal,c:'#D85A30'},
+    {l:'Наценка',v:mkAmt,c:'#3dd68c'},{l:'Налог',v:txAmt+vtAmt,c:'#606070'}
+  ].filter(sg=>sg.v>0.5);
+  var tot=segs.reduce((a,b)=>a+b.v,0);
+  el('res-stack').innerHTML=segs.map(sg=>`<div class="bar-seg" style="flex:${tot>0?Math.round(sg.v/tot*100):0};background:${sg.c}"></div>`).join('');
+  el('res-legend').innerHTML=segs.map(sg=>`<div class="bleg"><span class="bleg-dot" style="background:${sg.c}"></span>${sg.l} ${tot>0?Math.round(sg.v/tot*100):0}%</div>`).join('');
+}
+
+// ═══════════ TESTER ═══════════
+var TESTS=[
+  {id:'t01',group:'Формулы',tag:'f',title:'Базовый расчёт: объём → масса → стоимость',inputs:[{k:'Объём',v:'10 см³'},{k:'Поддержки',v:'0%'},{k:'Плотность',v:'1.0 г/см³'},{k:'Цена',v:'2000 ₽/кг'},{k:'Fail rate',v:'0%'}],expected:'Стоимость материала = <b>20.00 ₽</b>',hint:'10 × 1.0 × (2000/1000) = 20 ₽. Любое отклонение — ошибка в базовой формуле.'},
+  {id:'t02',group:'Формулы',tag:'f',title:'Поддержки увеличивают объём до умножения на плотность',inputs:[{k:'Объём',v:'20 см³'},{k:'Поддержки',v:'25%'},{k:'Плотность',v:'1.0'},{k:'Цена',v:'1000 ₽/кг'},{k:'Fail rate',v:'0%'}],expected:'Масса = <b>25 г</b>, стоимость = <b>25 ₽</b>',hint:'20 × 1.25 = 25 см³ × 1.0 = 25 г. Если 20 г — поддержки не применяются.'},
+  {id:'t03',group:'Формулы',tag:'f',title:'Fail rate увеличивает расход материала',inputs:[{k:'Объём',v:'10 см³'},{k:'Fail rate',v:'10%'},{k:'Плотность',v:'1.0'},{k:'Цена',v:'1000 ₽/кг'}],expected:'≈ <b>11.11 ₽</b>',hint:'10 г × 1.10 = 11.1 г. Если 10 ₽ — fail rate не применяется.'},
+  {id:'t04',group:'Формулы',tag:'f',title:'Машинное время делится на кол-во деталей',inputs:[{k:'Время',v:'10 ч'},{k:'Деталей',v:'5 шт'},{k:'Ставка',v:'100 ₽/ч'}],expected:'Машина / деталь = <b>200 ₽</b>',hint:'10 × 100 / 5 = 200 ₽. Если 1000 — qty не учтён.'},
+  {id:'t05',group:'Формулы',tag:'f',title:'Наценка + налог с выручки — правильная формула',inputs:[{k:'Себестоимость',v:'~1000 ₽'},{k:'Наценка',v:'50%'},{k:'Налог',v:'6%'},{k:'НДС',v:'0%'}],expected:'≈ <b>1595 ₽</b>',hint:'1000 × 1.5 / 0.94 ≈ 1595. Ошибка: 1500 × 1.06 = 1590 — неверно.'},
+  {id:'t06',group:'Формулы',tag:'f',title:'Надбавка за брак — формула с делением на (1-f)',inputs:[{k:'База',v:'1000 ₽'},{k:'Fail rate',v:'10%'}],expected:'Надбавка = <b>111 ₽</b>',hint:'1000 × 0.1 / 0.9 ≈ 111. Если 100 — неверная формула.'},
+  {id:'t07',group:'Граничные случаи',tag:'e',title:'Объём = 0 → прочерки, не NaN',inputs:[{k:'Объём',v:'0 см³'}],expected:'Все поля = <b>—</b>',hint:'calcOrder должна досрочно выйти при vol=0.'},
+  {id:'t08',group:'Граничные случаи',tag:'e',title:'qty=1 и qty=20 — машина масштабируется',inputs:[{k:'Время',v:'10 ч'},{k:'Ставка',v:'100 ₽/ч'},{k:'qty=1',v:'→ 1000 ₽'},{k:'qty=20',v:'→ 50 ₽'}],expected:'qty=1: <b>1000 ₽</b>, qty=20: <b>50 ₽</b>',hint:'Крайние значения деления на qty.'},
+  {id:'t09',group:'Граничные случаи',tag:'e',title:'Минималка применяется и показывает предупреждение',inputs:[{k:'Мин. цена',v:'700 ₽'},{k:'Объём',v:'0.5 см³'}],expected:'Итог = <b>700 ₽</b> + предупреждение',hint:'Ветка max(finalCalc, profile.min).'},
+  {id:'t10',group:'Граничные случаи',tag:'e',title:'Смена материала пересчитывает массу мгновенно',inputs:[{k:'Объём',v:'10 см³'},{k:'PETG ρ=1.27',v:'→ 12.7 г'},{k:'ABS ρ=1.05',v:'→ 10.5 г'}],expected:'Масса меняется <b>мгновенно</b>',hint:'onMC() должен вызывать calcOrder().'},
+  {id:'t11',group:'Граничные случаи',tag:'e',title:'Поддержки 0% и 80% — derived-блок обновляется',inputs:[{k:'Объём',v:'10 см³'},{k:'0%',v:'→ 10.0 см³'},{k:'80%',v:'→ 18.0 см³'}],expected:'Блок обновляется <b>в реальном времени</b>',hint:'Derived-блок под полями ввода.'},
+  {id:'t12',group:'Граничные случаи',tag:'e',title:'Наценка 0%, налог 0% — цена = себестоимость',inputs:[{k:'Наценка',v:'0%'},{k:'Налог',v:'0%'}],expected:'Цена = <b>себестоимость</b> (или минималка)',hint:'Нет скрытых надбавок.'},
+  {id:'t13',group:'Хранилище',tag:'u',title:'Данные сохраняются после обновления страницы',inputs:[{k:'Действие',v:'Добавь принтер "Тест-001"'},{k:'Затем',v:'F5'}],expected:'Принтер <b>сохранился</b>',hint:'localStorage. Если пропал — сохранение не работает.'},
+  {id:'t14',group:'Хранилище',tag:'u',title:'Удалённый материал исчезает из выбора',inputs:[{k:'Удали материал',v:'в настройках'},{k:'Перейди',v:'в Заказ'}],expected:'Материала <b>нет в списке</b>',hint:'populateClient() перечитывает DB.'},
+  {id:'t15',group:'Реальный заказ',tag:'r',title:'Сверка с реальным заказом — расхождение < 15%',inputs:[{k:'Возьми',v:'реальный заказ'},{k:'Введи',v:'параметры из слайсера'},{k:'Сравни',v:'с ручным расчётом'}],expected:'Расхождение <b>< 15%</b>',hint:'Самый важный тест. Расхождение > 15% — неверные параметры в настройках.'}
+];
+var TOTAL=TESTS.length;
+var tNick='', tResults={}, tNotes={}, tOpen={}, tAllResults={}, tLBOpen=false;
+
+async function apiGet(path){
+  var r=await fetch(API+path); return await r.json();
+}
+async function apiPut(path,body){
+  await fetch(API+path,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+}
+
+async function checkAPI(){
+  var s=el('api-status'); if(!s)return;
+  s.className='api-status loading'; s.textContent='connecting...';
+  try{
+    var r=await fetch(API+'/api/health');
+    if(r.ok){s.className='api-status ok';s.textContent='API ✓';}
+    else throw new Error();
+  }catch(e){s.className='api-status err';s.textContent='API offline';}
+}
+
+async function initTester(){
+  checkAPI();
+  var saved=localStorage.getItem('my-3d-calc-nick');
+  if(saved&&saved.length>=2){tNick=saved; await tLoadMy(); showTMain();} else {showTLogin();}
+}
+function showTLogin(){el('t-login').style.display='block';el('t-main').style.display='none';}
+function showTMain(){
+  el('t-login').style.display='none';el('t-main').style.display='block';
+  el('t-nick-d').textContent=tNick;
+  renderTests(); tUpdateLB();
+}
+async function tLogin(){
+  var nick=el('t-nick-inp').value.trim().replace(/[^a-zA-Zа-яА-ЯёЁ0-9_\-]/g,'');
+  if(!nick||nick.length<2)return;
+  tNick=nick; localStorage.setItem('my-3d-calc-nick',nick);
+  await tLoadMy(); showTMain();
+}
+function tLogout(){tNick='';tResults={};tNotes={};el('t-nick-inp').value='';showTLogin();}
+
+async function tLoadMy(){
+  try{var d=await apiGet('/api/testers/'+tNick);tResults=d.results||{};tNotes=d.notes||{};}catch(e){}
+}
+async function tSave(){
+  try{await apiPut('/api/testers/'+tNick,{results:tResults,notes:tNotes});}catch(e){}
+  tUpdateLB();
+}
+async function tUpdateLB(){
+  try{tAllResults=await apiGet('/api/testers');}catch(e){}
+  if(tLBOpen)renderLB(); renderTests();
+}
+
+function toggleLB(){tLBOpen=!tLBOpen;el('lb-panel').style.display=tLBOpen?'block':'none';if(tLBOpen){tUpdateLB();}}
+
+function renderLB(){
+  if(!tAllResults.length){el('lb-body').innerHTML='<div style="font-size:12px;color:var(--text3);padding:.5rem 0">Пока никто не тестировал</div>';return;}
+  var rows=[...tAllResults].sort((a,b)=>{
+    var ap=Object.values(a.results||{}).filter(v=>v==='pass').length;
+    var bp=Object.values(b.results||{}).filter(v=>v==='pass').length;
+    return bp-ap;
+  });
+  var medals=['🥇','🥈','🥉'];
+  el('lb-body').innerHTML=rows.map((r,i)=>{
+    var pass=Object.values(r.results||{}).filter(v=>v==='pass').length;
+    var fail=Object.values(r.results||{}).filter(v=>v==='fail').length;
+    var pct=Math.round(pass/TOTAL*100);
+    var rank=i<3?medals[i]:(i+1);
+    var isMe=r.nick===tNick;
+    return `<div class="lb-row"><div class="lb-rank">${rank}</div><div class="lb-name">${isMe?'<b>'+r.nick+' (ты)</b>':r.nick}</div><div class="lb-bar-bg"><div class="lb-bar-fill" style="width:${pct}%"></div></div><div class="lb-pass">${pass} ✓</div><div class="lb-fail">${fail} ✗</div></div>`;
+  }).join('');
+}
+
+function renderTests(){
+  var groups={};
+  TESTS.forEach(t=>{if(!groups[t.group])groups[t.group]=[];groups[t.group].push(t);});
+  var tCls={f:'tag-f',e:'tag-e',r:'tag-r',u:'tag-u'};
+  var tLbl={f:'Формула',e:'Граница',r:'Реальный',u:'UI'};
+  var allRes={};
+  (tAllResults||[]).forEach(r=>{allRes[r.nick]=r.results||{};});
+  var html='';
+  Object.keys(groups).forEach(g=>{
+    var tests=groups[g];
+    var done=tests.filter(t=>tResults[t.id]==='pass'||tResults[t.id]==='fail').length;
+    html+=`<div class="tgroup"><div class="tg-hdr"><i class="ti ti-check" style="font-size:12px"></i>${g}<span class="tg-badge">${done}/${tests.length}</span></div>`;
+    tests.forEach(t=>{
+      var st=tResults[t.id]||'none';
+      var icon=st==='pass'?'<i class="ti ti-check"></i>':st==='fail'?'<i class="ti ti-x"></i>':'';
+      var whoHtml='';
+      var whoNicks=Object.keys(allRes).filter(n=>(allRes[n][t.id]==='pass'||allRes[n][t.id]==='fail')&&n!==tNick);
+      if(whoNicks.length) whoHtml='<div class="who-row">'+whoNicks.map(n=>`<span class="who-chip ${allRes[n][t.id]}">${n} ${allRes[n][t.id]==='pass'?'✓':'✗'}</span>`).join('')+'</div>';
+      html+=`<div class="tcard ${st!=='none'?st:''}" id="tc-${t.id}">
+        <div class="tc-hdr" onclick="tToggle('${t.id}')"><div class="tc-status ${st!=='none'?st:''}">${icon}</div><div class="tc-title">${t.title}</div><span class="tc-tag ${tCls[t.tag]||'tag-u'}">${tLbl[t.tag]}</span></div>
+        ${whoHtml}
+        <div class="tbody ${tOpen[t.id]?'open':''}" id="tb-${t.id}">
+          <div class="scenario"><div class="sc-label">Что вводить</div><div class="chip-row">${t.inputs.map(i=>`<span class="chip"><b>${i.k}</b>: ${i.v}</span>`).join('')}</div><div class="exp">Ожидается: ${t.expected}</div><div class="hint">${t.hint}</div></div>
+          <div class="got-row"><span class="got-lbl">Получилось:</span><input class="got-inp" id="got-${t.id}" placeholder="введи..." value="${tNotes[t.id+'_got']||''}" onchange="tSaveGot('${t.id}',this.value)"/></div>
+          <textarea class="note-inp" id="note-${t.id}" placeholder="Комментарий..." onchange="tSaveNote('${t.id}',this.value)">${tNotes[t.id]||''}</textarea>
+          <div class="btn-row">
+            <button class="btn ${st==='pass'?'pass-btn':''}" onclick="tSet('${t.id}','pass')"><i class="ti ti-check"></i>Прошёл</button>
+            <button class="btn ${st==='fail'?'fail-btn':''}" onclick="tSet('${t.id}','fail')"><i class="ti ti-x"></i>Провалился</button>
+            <button class="btn" onclick="tSet('${t.id}','none')">Сбросить</button>
+          </div>
+        </div>
+      </div>`;
+    });
+    html+='</div>';
+  });
+  el('t-test-list').innerHTML=html;
+  tUpdateStats();
+}
+
+function tToggle(id){tOpen[id]=!tOpen[id];var b=el('tb-'+id);if(b)b.classList.toggle('open',!!tOpen[id]);}
+function tSet(id,val){if(val==='none')delete tResults[id];else tResults[id]=val;tOpen[id]=true;tSave();renderTests();var b=el('tb-'+id);if(b)b.classList.add('open');}
+function tSaveGot(id,v){tNotes[id+'_got']=v;tSave();}
+function tSaveNote(id,v){tNotes[id]=v;tSave();}
+function tUpdateStats(){
+  var pass=TESTS.filter(t=>tResults[t.id]==='pass').length;
+  var fail=TESTS.filter(t=>tResults[t.id]==='fail').length;
+  var done=pass+fail;
+  el('t-prog').style.width=Math.round(done/TOTAL*100)+'%';
+  el('t-prog-lbl').textContent=done+' / '+TOTAL;
+  el('t-s-pass').textContent=pass; el('t-s-fail').textContent=fail; el('t-s-skip').textContent=TOTAL-done;
+  var ab=el('t-ask-btn'); if(ab)ab.style.display=fail>0?'flex':'none';
+}
+function tAskFix(){
+  var failed=TESTS.filter(t=>tResults[t.id]==='fail');
+  var desc=failed.map(t=>`• ${t.title} — получилось: ${tNotes[t.id+'_got']||'(не указано)'}${tNotes[t.id]?' ('+tNotes[t.id]+')':''}`).join('\n');
+  if(window.sendPrompt) window.sendPrompt(`Тестировщик ${tNick} нашёл баги:\n${desc}\nПомоги найти и исправить ошибки.`);
+}
+
+// ═══════════ INIT ═══════════
+function renderAll(){renderPrinters();renderMaterials();renderOH();renderLabor();renderProfiles();renderPP();}
+dbLoad();renderAll();
+</script>
+</body>
+</html>
