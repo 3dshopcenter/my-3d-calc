@@ -324,6 +324,10 @@ html,body{height:100%;background:var(--bg);color:var(--text)}
           <div class="field"><label>Запуск</label><input id="lab-t3" type="number" placeholder="8" oninput="saveLabor()"/></div>
           <div class="field"><label>Съём + QC</label><input id="lab-t4" type="number" placeholder="10" oninput="saveLabor()"/></div>
         </div>
+        <div class="frow c2">
+          <div class="field"><label>Обработка стандарт</label><input id="lab-t6" type="number" placeholder="10" oninput="saveLabor()"/></div>
+          <div class="field"><label>Обработка от поддержек</label><input id="lab-t7" type="number" placeholder="15" oninput="saveLabor()"/></div>
+        </div>
         <div class="frow c2"><div class="field"><label>Упаковка + отправка</label><input id="lab-t5" type="number" placeholder="10" oninput="saveLabor()"/></div><div class="field"><label>Итого мин (авто)</label><input id="lab-total" class="readonly" readonly/></div></div>
       </div>
     </div>
@@ -632,16 +636,16 @@ function renderOH(){
 // ═══════════ LABOR ═══════════
 function saveLabor(){
   var l=DB.labor;
-  ['salary','tax','days','hrs','eff','t1','t2','t3','t4','t5'].forEach(k=>{l[k]=+el('lab-'+k).value||0;});
+  ['salary','tax','days','hrs','eff','t1','t2','t3','t4','t5','t6','t7'].forEach(k=>{l[k]=+el('lab-'+k).value||0;});
   var full=l.salary*(1+(l.tax||30)/100);
   var ph=(l.days||22)*(l.hrs||8)*((l.eff||70)/100);
   el('lab-result').value = ph>0 ? (full/ph).toFixed(1)+' ₽/ч' : '—';
-  el('lab-total').value = (l.t1+l.t2+l.t3+l.t4+l.t5)+' мин';
+  el('lab-total').value = (l.t1+l.t2+l.t3+l.t4+l.t5+(l.t6||0)+(l.t7||0))+' мин';
   dbSave();
 }
 function renderLabor(){
   var l=DB.labor;
-  ['salary','tax','days','hrs','eff','t1','t2','t3','t4','t5'].forEach(k=>{if(el('lab-'+k)&&l[k]!==undefined)el('lab-'+k).value=l[k];});
+  ['salary','tax','days','hrs','eff','t1','t2','t3','t4','t5','t6','t7'].forEach(k=>{if(el('lab-'+k)&&l[k]!==undefined)el('lab-'+k).value=l[k];});
   saveLabor();
 }
 
@@ -708,7 +712,7 @@ function laborRate(){
   var ph=(l.days||22)*(l.hrs||8)*((l.eff||70)/100);
   return ph>0?full/ph:500;
 }
-function laborTime(){var l=DB.labor;return (l.t1||0)+(l.t2||0)+(l.t3||0)+(l.t4||0)+(l.t5||0)||48;}
+function laborTime(){var l=DB.labor;return (l.t1||0)+(l.t2||0)+(l.t3||0)+(l.t4||0)+(l.t5||0)+(l.t6||0)+(l.t7||0)||48;}
 function ohPerHr(){
   var o=DB.overhead; if(!o.hours)return 0;
   var tot=(o.rent||0)+(o.util||0)+(o.inet||0)+(o.sw||0)+(o.mkt||0)+(o.bank||0)+(o.ins||0)+(o.misc||0);
