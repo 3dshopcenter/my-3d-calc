@@ -396,10 +396,17 @@ html,body{height:100%;background:var(--bg);color:var(--text)}
 
     <div class="csection">
       <div class="csec-title">Параметры печати</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-        <div><label class="flabel">Время печати (ч)</label><input class="nf" id="c-time" type="number" step="0.5" placeholder="6" oninput="calcOrder()"/></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
+        <div><label class="flabel">Время печати запуска (ч)</label><input class="nf" id="c-time" type="number" step="0.5" placeholder="6" oninput="calcOrder()"/></div>
+        <div><label class="flabel">Деталей в заказе (шт)</label><input class="nf hl" id="c-total-qty" type="number" placeholder="1" value="1" oninput="calcOrder()"/></div>
         <div><label class="flabel">Сложность</label><select class="sf" id="c-complexity" onchange="calcOrder()"><option value="1">Простая</option><option value="1.5" selected>Средняя</option><option value="2">Сложная</option><option value="3">Очень сложная</option></select></div>
         <div><label class="flabel">Профиль клиента</label><select class="sf" id="c-profile" onchange="calcOrder()"></select></div>
+      </div>
+      <!-- Оптовый блок — запуски -->
+      <div class="derived-row" id="batch-info" style="margin-top:8px;display:none">
+        <div class="derived-chip"><span class="dl">Запусков принтера</span><span class="dv" id="d-runs">—</span></div>
+        <div class="derived-chip"><span class="dl">Всего машино-часов</span><span class="dv" id="d-total-time">—</span></div>
+        <div class="derived-chip"><span class="dl">Всего материала</span><span class="dv" id="d-total-mat">—</span></div>
       </div>
     </div>
 
@@ -440,7 +447,17 @@ html,body{height:100%;background:var(--bg);color:var(--text)}
       <div class="rl sub"><span class="rn">Доставка</span><span class="rv" id="res-ship">—</span></div>
     </div>
     <div id="res-minwarn" class="warn-card" style="display:none"></div>
-    <div class="rl total"><span class="rn">Итого клиенту</span><span class="rv" id="res-final">—</span></div>
+    <div class="rl total"><span class="rn">Итого / деталь</span><span class="rv" id="res-final">—</span></div>
+    <!-- Оптовый итог -->
+    <div id="batch-result" style="display:none">
+      <div style="border-top:1px solid var(--border2);margin:8px 0"></div>
+      <div class="rh" style="margin-bottom:6px">Итого партия</div>
+      <div class="rl sub"><span class="rn">Деталей</span><span class="rv" id="res-batch-qty">—</span></div>
+      <div class="rl sub"><span class="rn">Запусков</span><span class="rv" id="res-batch-runs">—</span></div>
+      <div class="rl sub"><span class="rn">Себестоимость партии</span><span class="rv" id="res-batch-cost">—</span></div>
+      <div class="rl" style="padding-top:8px;margin-top:4px;border-top:1px solid var(--border2)"><span class="rn" style="font-weight:500;font-size:14px;color:var(--text)">Цена партии клиенту</span><span class="rv" id="res-batch-final" style="font-size:20px;font-weight:500;color:var(--green);font-family:'JetBrains Mono',monospace">—</span></div>
+      <div class="rl"><span class="rn" style="color:var(--text3);font-size:11px">Прибыль с партии</span><span class="rv" id="res-batch-profit" style="font-size:13px;color:var(--green)">—</span></div>
+    </div>
     <div class="bar-wrap">
       <div class="bar-title">Структура цены</div>
       <div class="bar-stack" id="res-stack"></div>
@@ -785,39 +802,63 @@ function calcOrder(){
   var profile=DB.profiles.find(p=>p.id===+el('c-profile').value);
   var vol=+el('c-vol').value||0;
   var supp=+el('c-supp').value||0;
-  var qty=+el('c-qty').value||1;
-  var time=+el('c-time').value||0;
+  var qty=+el('c-qty').value||1;          // деталей в одном запуске
+  var totalQty=+el('c-total-qty').value||1; // деталей в заказе
+  var time=+el('c-time').value||0;        // время одного запуска
   var complexity=+el('c-complexity').value||1.5;
   var ship=+el('c-ship').value||0;
   var extra=+el('c-extra').value||0;
   var density=mat?mat.density:1;
   var failRate=mat?(mat.fail||5):5;
   var priceKg=mat?(mat.price||1800):1800;
+
+  // Объём и масса одной детали
   var volS=vol*(1+supp/100);
   var massG=volS*density;
   var massWaste=massG*(1+failRate/100);
   var matCost=(massWaste/1000)*priceKg;
+
   el('d-vol').textContent=volS.toFixed(1)+' см³';
   el('d-mass').textContent=massG.toFixed(1)+' г';
   el('d-mcost').textContent=vol>0?fmt(matCost):'—';
+
+  // Количество запусков для всей партии
+  var runs=Math.ceil(totalQty/qty);
+  var totalTime=runs*time; // всего машино-часов на партию
+  var isBatch=totalQty>1;
+
+  // Обновляем блок информации о партии
+  el('batch-info').style.display=isBatch?'grid':'none';
+  if(isBatch){
+    el('d-runs').textContent=runs+' шт';
+    el('d-total-time').textContent=totalTime.toFixed(1)+' ч';
+    el('d-total-mat').textContent=((massWaste*totalQty)/1000).toFixed(2)+' кг';
+  }
+
   if(!printer||!mat||!profile||vol===0||time===0){
     ['res-mat','res-mach','res-cons','res-infra','res-labor','res-oplabor','res-risk','res-post','res-cost','res-markup','res-tax','res-vat','res-ship','res-final','res-profit'].forEach(id=>{var e=el(id);if(e)e.textContent='—';});
     el('rs-mass').textContent='—'; el('res-note').textContent='';
     el('res-minwarn').style.display='none';
+    el('batch-result').style.display='none';
     el('res-stack').innerHTML=''; el('res-legend').innerHTML=''; return;
   }
+
   el('rs-mass').textContent=massG.toFixed(1);
+
+  // Себестоимость ОДНОЙ детали
+  // Машина, расходники, инфра, труд оператора — делятся на qty (деталей в запуске)
   var machCost=(time*printerRate(printer))/qty;
   var consCost=(time*2)/qty;
   var infraCost=(time*(ohPerHr()+(printer.watt/1000)*(printer.kwh||6)))/qty;
   var labCost=(laborTime()*complexity/60)*laborRate()/qty;
-  var opOrderCost=(time/100)*laborRate();
+  var opOrderCost=(time/100)*laborRate(); // привязан к времени запуска, не делится
   var f=failRate/100;
   var base=matCost+machCost+consCost+infraCost+labCost;
   var riskCost=base*f/(1-f);
   var ppTotal=Object.values(selPP).reduce((a,b)=>a+b,0)+extra;
-  var cost=base+riskCost+opOrderCost+ppTotal;
+  var cost=base+riskCost+opOrderCost+ppTotal; // себестоимость 1 детали
 
+  // Цена одной детали
   var mk=profile.markup/100, tx=profile.tax/100, vt=(profile.vat||0)/100;
   var pNoVat=cost*(1+mk)/(1-tx);
   var mkAmt=pNoVat-cost, txAmt=pNoVat*tx, vtAmt=pNoVat*vt;
@@ -827,6 +868,7 @@ function calcOrder(){
   var isMin=fc<minP;
   var profit=pNoVat-cost-txAmt;
   var margin=final>0?Math.round(profit/final*100):0;
+
   var s=(id,v)=>{var e=el(id);if(e)e.textContent=v;};
   s('res-mat',fmt(matCost)); s('res-mach',fmt(machCost)); s('res-cons',fmt(consCost));
   s('res-infra',fmt(infraCost)); s('res-labor',fmt(labCost)); s('res-oplabor',fmt(opOrderCost)); s('res-risk',fmt(riskCost));
@@ -837,6 +879,20 @@ function calcOrder(){
   s('res-note','маржинальность '+margin+'%');
   el('res-minwarn').style.display=isMin?'block':'none';
   if(isMin)el('res-minwarn').textContent='Мин. цена профиля '+fmtN(profile.min)+' ₽ — применена';
+
+  // Итог по партии
+  el('batch-result').style.display=isBatch?'block':'none';
+  if(isBatch){
+    var batchCost=cost*totalQty;
+    var batchFinal=Math.round(final)*totalQty;
+    var batchProfit=profit*totalQty;
+    s('res-batch-qty',totalQty+' шт');
+    s('res-batch-runs',runs+' запусков × '+time+' ч = '+totalTime.toFixed(1)+' ч');
+    s('res-batch-cost',fmt(batchCost));
+    s('res-batch-final',fmt(batchFinal));
+    s('res-batch-profit',fmt(batchProfit));
+  }
+
   var segs=[
     {l:'Материал',v:matCost,c:'#378ADD'},{l:'Машина',v:machCost+consCost,c:'#1D9E75'},
     {l:'Накладные',v:infraCost,c:'#BA7517'},{l:'Труд',v:labCost,c:'#7F77DD'},{l:'Затр.опер.',v:opOrderCost,c:'#5DCAA5'},
