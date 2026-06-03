@@ -455,7 +455,9 @@ html,body{height:100%;background:var(--bg);color:var(--text)}
       <div class="rl sub"><span class="rn">Деталей</span><span class="rv" id="res-batch-qty">—</span></div>
       <div class="rl sub"><span class="rn">Запусков</span><span class="rv" id="res-batch-runs">—</span></div>
       <div class="rl sub"><span class="rn">Себестоимость партии</span><span class="rv" id="res-batch-cost">—</span></div>
-      <div class="rl" style="padding-top:8px;margin-top:4px;border-top:1px solid var(--border2)"><span class="rn" style="font-weight:500;font-size:14px;color:var(--text)">Цена партии клиенту</span><span class="rv" id="res-batch-final" style="font-size:20px;font-weight:500;color:var(--green);font-family:'JetBrains Mono',monospace">—</span></div>
+      <div style="border-top:1px solid var(--border2);margin:8px 0"></div>
+      <div class="rl" style="padding-top:4px"><span class="rn" style="font-weight:500;font-size:14px;color:var(--text)">Цена партии клиенту</span><span class="rv" id="res-batch-final" style="font-size:20px;font-weight:500;color:var(--green);font-family:'JetBrains Mono',monospace">—</span></div>
+      <div class="rl sub"><span class="rn">Цена / деталь в партии</span><span class="rv" id="res-batch-per-part" style="color:var(--accent)">—</span></div>
       <div class="rl"><span class="rn" style="color:var(--text3);font-size:11px">Прибыль с партии</span><span class="rv" id="res-batch-profit" style="font-size:13px;color:var(--green)">—</span></div>
     </div>
     <div class="bar-wrap">
@@ -836,7 +838,7 @@ function calcOrder(){
   }
 
   if(!printer||!mat||!profile||vol===0||time===0){
-    ['res-mat','res-mach','res-cons','res-infra','res-labor','res-oplabor','res-risk','res-post','res-cost','res-markup','res-tax','res-vat','res-ship','res-final','res-profit'].forEach(id=>{var e=el(id);if(e)e.textContent='—';});
+    ['res-mat','res-mach','res-cons','res-infra','res-labor','res-oplabor','res-risk','res-post','res-cost','res-markup','res-tax','res-vat','res-ship','res-final','res-profit','res-batch-cost','res-batch-final','res-batch-profit','res-batch-per-part'].forEach(id=>{var e=el(id);if(e)e.textContent='—';});
     el('rs-mass').textContent='—'; el('res-note').textContent='';
     el('res-minwarn').style.display='none';
     el('batch-result').style.display='none';
@@ -881,16 +883,37 @@ function calcOrder(){
   if(isMin)el('res-minwarn').textContent='Мин. цена профиля '+fmtN(profile.min)+' ₽ — применена';
 
   // Итог по партии
+  // Правильная логика:
+  // - затраты на запуск (машина, расходники, инфра, труд) × runs
+  // - затраты на деталь (материал, риск, opOrderCost, постобработка) × totalQty
   el('batch-result').style.display=isBatch?'block':'none';
   if(isBatch){
-    var batchCost=cost*totalQty;
-    var batchFinal=Math.round(final)*totalQty;
-    var batchProfit=profit*totalQty;
-    s('res-batch-qty',totalQty+' шт');
-    s('res-batch-runs',runs+' запусков × '+time+' ч = '+totalTime.toFixed(1)+' ч');
-    s('res-batch-cost',fmt(batchCost));
+    // Затраты на запуск × количество запусков
+    var runCostPerRun = (machCost+consCost+infraCost+labCost)*qty; // стоимость одного запуска
+    var batchRunCost  = runCostPerRun * runs;                       // все запуски
+
+    // Затраты на каждую деталь × количество деталей
+    var perPartCost   = matCost + riskCost + opOrderCost + ppTotal; // на деталь
+    var batchPartCost = perPartCost * totalQty;                     // все детали
+
+    // Общая себестоимость партии
+    var batchCost = batchRunCost + batchPartCost;
+
+    // Цена партии клиенту через наценку на реальную себестоимость партии
+    var batchPNoVat = batchCost*(1+mk)/(1-tx);
+    var batchVat    = batchPNoVat*vt;
+    var batchFinal  = Math.round(batchPNoVat + batchVat + ship);
+    var batchProfit = batchPNoVat - batchCost - batchPNoVat*tx;
+
+    s('res-batch-qty',  totalQty+' шт');
+    s('res-batch-runs', runs+' запусков × '+time+' ч = '+totalTime.toFixed(1)+' ч');
+    s('res-batch-cost', fmt(batchCost));
     s('res-batch-final',fmt(batchFinal));
     s('res-batch-profit',fmt(batchProfit));
+
+    // Уточнённая цена за деталь в партии
+    var batchPricePerPart = Math.round(batchFinal / totalQty);
+    s('res-batch-per-part', fmt(batchPricePerPart));
   }
 
   var segs=[
