@@ -222,6 +222,8 @@ html,body{height:100%;background:var(--bg);color:var(--text)}
 .api-status.ok{background:var(--green-bg);border-color:var(--green-border);color:var(--green)}
 .api-status.err{background:var(--red-bg);border-color:var(--red-border);color:var(--red)}
 .api-status.loading{background:var(--bg3);color:var(--text3)}
+
+.list-item.editing{border-color:var(--accent);background:var(--accent-bg);}
 </style>
 </head>
 <body>
@@ -268,7 +270,7 @@ html,body{height:100%;background:var(--bg);color:var(--text)}
           <div class="field"><label>Мощность (Вт)</label><input id="p-watt" type="number" placeholder="300"/></div>
         </div>
         <div class="frow c2"><div class="field"><label>Обслуживание (₽/год)</label><input id="p-maint" type="number" placeholder="15000"/></div><div class="field"><label>Тариф электр. (₽/кВтч)</label><input id="p-kwh" type="number" placeholder="6"/></div></div>
-        <button class="btn primary" onclick="addPrinter()"><i class="ti ti-plus"></i>Добавить</button>
+        <button id="p-add-btn" class="btn primary" onclick="addPrinter()"><i class="ti ti-plus"></i>Добавить</button> <button id="p-cancel-btn" class="btn" onclick="clearPrinterForm()" style="display:none"><i class="ti ti-x"></i>Отмена</button>
       </div>
       <div id="printer-list"></div>
     </div>
@@ -288,7 +290,7 @@ html,body{height:100%;background:var(--bg);color:var(--text)}
           <div class="field"><label>₽/см³ (авто)</label><input id="m-percc" class="readonly" readonly/></div>
         </div>
         <div class="frow c1"><div class="field"><label>Заметки</label><input id="m-note" placeholder="Примечания..."/></div></div>
-        <button class="btn primary" onclick="addMaterial()"><i class="ti ti-plus"></i>Добавить</button>
+        <button id="m-add-btn" class="btn primary" onclick="addMaterial()"><i class="ti ti-plus"></i>Добавить</button> <button id="m-cancel-btn" class="btn" onclick="clearMatForm()" style="display:none"><i class="ti ti-x"></i>Отмена</button>
       </div>
       <div id="material-list"></div>
     </div>
@@ -339,7 +341,7 @@ html,body{height:100%;background:var(--bg);color:var(--text)}
       <div class="card">
         <div class="frow c2"><div class="field"><label>Название</label><input id="pr-name" placeholder="Розница"/></div><div class="field"><label>Наценка (%)</label><input id="pr-markup" type="number" placeholder="80"/></div></div>
         <div class="frow c3"><div class="field"><label>Налог с выручки (%)</label><input id="pr-tax" type="number" placeholder="6"/></div><div class="field"><label>НДС (%)</label><input id="pr-vat" type="number" placeholder="0"/></div><div class="field"><label>Мин. заказ (₽)</label><input id="pr-min" type="number" placeholder="700"/></div></div>
-        <button class="btn primary" onclick="addProfile()"><i class="ti ti-plus"></i>Добавить</button>
+        <button id="pr-add-btn" class="btn primary" onclick="addProfile()"><i class="ti ti-plus"></i>Добавить</button> <button id="pr-cancel-btn" class="btn" onclick="clearProfileForm()" style="display:none"><i class="ti ti-x"></i>Отмена</button>
       </div>
       <div id="profile-list"></div>
     </div>
@@ -351,7 +353,7 @@ html,body{height:100%;background:var(--bg);color:var(--text)}
       <div class="card">
         <div class="frow c2"><div class="field"><label>Название</label><input id="pp-name" placeholder="Шлифовка финишная"/></div><div class="field"><label>Цена (₽)</label><input id="pp-price" type="number" placeholder="300"/></div></div>
         <div class="frow c1"><div class="field"><label>Описание</label><input id="pp-desc" placeholder="P320–P800, под покраску"/></div></div>
-        <button class="btn primary" onclick="addPP()"><i class="ti ti-plus"></i>Добавить</button>
+        <button id="pp-add-btn" class="btn primary" onclick="addPP()"><i class="ti ti-plus"></i>Добавить</button> <button id="pp-cancel-btn" class="btn" onclick="clearPPForm()" style="display:none"><i class="ti ti-x"></i>Отмена</button>
       </div>
       <div id="pp-list"></div>
     </div>
@@ -584,17 +586,34 @@ function printerRate(p){
   var elec = (p.watt/1000)*(p.kwh||6);
   return depr+maint+elec;
 }
-function addPrinter(){
-  var name=el('p-name').value.trim(); if(!name)return;
-  DB.printers.push({id:Date.now(),name,tech:el('p-tech').value,cost:+el('p-cost').value||150000,life:+el('p-life').value||4,load:+el('p-load').value||60,watt:+el('p-watt').value||300,maint:+el('p-maint').value||10000,kwh:+el('p-kwh').value||6});
-  ['p-name','p-cost','p-life','p-load','p-watt','p-maint','p-kwh'].forEach(id=>el(id).value='');
-  renderPrinters(); dbSave();
+var editingPrinter=null,editingMaterial=null,editingProfile=null,editingPPid=null;
+
+function clearPrinterForm(){['p-name','p-cost','p-life','p-load','p-watt','p-maint','p-kwh'].forEach(id=>el(id).value='');el('p-add-btn').innerHTML='<i class="ti ti-plus"></i>Добавить';el('p-cancel-btn').style.display='none';editingPrinter=null;}
+function editPrinter(id){
+  var p=DB.printers.find(p=>p.id===id);if(!p)return;
+  editingPrinter=id;
+  el('p-name').value=p.name;el('p-tech').value=p.tech;el('p-cost').value=p.cost;
+  el('p-life').value=p.life;el('p-load').value=p.load;el('p-watt').value=p.watt;
+  el('p-maint').value=p.maint;el('p-kwh').value=p.kwh;
+  el('p-add-btn').innerHTML='<i class="ti ti-check"></i>Сохранить';
+  el('p-cancel-btn').style.display='inline-flex';
+  el('p-name').focus();el('p-name').scrollIntoView({behavior:'smooth',block:'center'});
 }
-function delPrinter(id){DB.printers=DB.printers.filter(p=>p.id!==id);renderPrinters();dbSave();}
+function addPrinter(){
+  var name=el('p-name').value.trim();if(!name)return;
+  if(editingPrinter){
+    var p=DB.printers.find(p=>p.id===editingPrinter);
+    if(p){p.name=name;p.tech=el('p-tech').value;p.cost=+el('p-cost').value||150000;p.life=+el('p-life').value||4;p.load=+el('p-load').value||60;p.watt=+el('p-watt').value||300;p.maint=+el('p-maint').value||10000;p.kwh=+el('p-kwh').value||6;}
+  } else {
+    DB.printers.push({id:Date.now(),name,tech:el('p-tech').value,cost:+el('p-cost').value||150000,life:+el('p-life').value||4,load:+el('p-load').value||60,watt:+el('p-watt').value||300,maint:+el('p-maint').value||10000,kwh:+el('p-kwh').value||6});
+  }
+  clearPrinterForm();renderPrinters();dbSave();
+}
+function delPrinter(id){if(!confirm('Удалить принтер?'))return;DB.printers=DB.printers.filter(p=>p.id!==id);renderPrinters();dbSave();}
 function renderPrinters(){
   var e=el('printer-list');
   if(!DB.printers.length){e.innerHTML='<div class="empty">Нет принтеров</div>';return;}
-  e.innerHTML=DB.printers.map(p=>`<div class="list-item"><div><div class="li-name">${p.name}</div><div class="li-meta">${printerRate(p).toFixed(1)} ₽/ч · ${p.watt} Вт · ${p.life} лет · ${p.load}% загр.</div></div><span class="tag blue">${p.tech}</span><div class="li-actions"><button class="btn sm danger" onclick="delPrinter(${p.id})"><i class="ti ti-trash"></i></button></div></div>`).join('');
+  e.innerHTML=DB.printers.map(p=>`<div class="list-item${editingPrinter===p.id?' editing':''}"><div><div class="li-name">${p.name}</div><div class="li-meta">${printerRate(p).toFixed(1)} ₽/ч · ${p.watt} Вт · ${p.life} лет · ${p.load}% загр.</div></div><span class="tag blue">${p.tech}</span><div class="li-actions"><button class="btn sm" onclick="editPrinter(${p.id})" title="Редактировать"><i class="ti ti-pencil"></i></button><button class="btn sm danger" onclick="delPrinter(${p.id})" title="Удалить"><i class="ti ti-trash"></i></button></div></div>`).join('');
 }
 
 // ═══════════ MATERIALS ═══════════
@@ -602,20 +621,35 @@ function previewMat(){
   var pr=+el('m-price').value||0, dn=+el('m-dens').value||0;
   el('m-percc').value = dn>0 ? (pr*dn/1000).toFixed(3)+' ₽/см³' : '';
 }
-function addMaterial(){
-  var name=el('m-name').value.trim(); if(!name)return;
-  DB.materials.push({id:Date.now(),name,tech:el('m-tech').value,price:+el('m-price').value||1800,density:+el('m-dens').value||1.1,fail:+el('m-fail').value||5,note:el('m-note').value});
-  ['m-name','m-price','m-dens','m-fail','m-note'].forEach(id=>el(id).value='');
-  el('m-percc').value=''; renderMaterials(); dbSave();
+function clearMatForm(){['m-name','m-price','m-dens','m-fail','m-note'].forEach(id=>el(id).value='');el('m-percc').value='';el('m-add-btn').innerHTML='<i class="ti ti-plus"></i>Добавить';el('m-cancel-btn').style.display='none';editingMaterial=null;}
+function editMaterial(id){
+  var m=DB.materials.find(m=>m.id===id);if(!m)return;
+  editingMaterial=id;
+  el('m-name').value=m.name;el('m-tech').value=m.tech;el('m-price').value=m.price;
+  el('m-dens').value=m.density;el('m-fail').value=m.fail;el('m-note').value=m.note||'';
+  previewMat();
+  el('m-add-btn').innerHTML='<i class="ti ti-check"></i>Сохранить';
+  el('m-cancel-btn').style.display='inline-flex';
+  el('m-name').focus();el('m-name').scrollIntoView({behavior:'smooth',block:'center'});
 }
-function delMaterial(id){DB.materials=DB.materials.filter(m=>m.id!==id);renderMaterials();dbSave();}
+function addMaterial(){
+  var name=el('m-name').value.trim();if(!name)return;
+  if(editingMaterial){
+    var m=DB.materials.find(m=>m.id===editingMaterial);
+    if(m){m.name=name;m.tech=el('m-tech').value;m.price=+el('m-price').value||1800;m.density=+el('m-dens').value||1.1;m.fail=+el('m-fail').value||5;m.note=el('m-note').value;}
+  } else {
+    DB.materials.push({id:Date.now(),name,tech:el('m-tech').value,price:+el('m-price').value||1800,density:+el('m-dens').value||1.1,fail:+el('m-fail').value||5,note:el('m-note').value});
+  }
+  clearMatForm();renderMaterials();dbSave();
+}
+function delMaterial(id){if(!confirm('Удалить материал?'))return;DB.materials=DB.materials.filter(m=>m.id!==id);renderMaterials();dbSave();}
 function renderMaterials(){
   var e=el('material-list');
   if(!DB.materials.length){e.innerHTML='<div class="empty">Нет материалов</div>';return;}
   e.innerHTML=DB.materials.map(m=>{
     var pcc=(m.price*m.density/1000).toFixed(3);
     var tc=m.tech==='FDM'?'blue':m.tech==='SLA'?'green':'amber';
-    return `<div class="list-item"><div><div class="li-name">${m.name}</div><div class="li-meta">${fmtN(m.price)} ₽/кг · ρ=${m.density} · ${pcc} ₽/см³ · брак ${m.fail}%${m.note?' · '+m.note:''}</div></div><span class="tag ${tc}">${m.tech}</span><div class="li-actions"><button class="btn sm danger" onclick="delMaterial(${m.id})"><i class="ti ti-trash"></i></button></div></div>`;
+    return `<div class="list-item"><div><div class="li-name">${m.name}</div><div class="li-meta">${fmtN(m.price)} ₽/кг · ρ=${m.density} · ${pcc} ₽/см³ · брак ${m.fail}%${m.note?' · '+m.note:''}</div></div><span class="tag ${tc}">${m.tech}</span><div class="li-actions"><button class="btn sm" onclick="editMaterial(${m.id})" title="Редактировать"><i class="ti ti-pencil"></i></button><button class="btn sm danger" onclick="delMaterial(${m.id})" title="Удалить"><i class="ti ti-trash"></i></button></div></div>`;
   }).join('');
 }
 
@@ -650,31 +684,57 @@ function renderLabor(){
 }
 
 // ═══════════ PROFILES ═══════════
-function addProfile(){
-  var name=el('pr-name').value.trim(); if(!name)return;
-  DB.profiles.push({id:Date.now(),name,markup:+el('pr-markup').value||50,tax:+el('pr-tax').value||6,vat:+el('pr-vat').value||0,min:+el('pr-min').value||500});
-  ['pr-name','pr-markup','pr-tax','pr-vat','pr-min'].forEach(id=>el(id).value='');
-  renderProfiles(); dbSave();
+function clearProfileForm(){['pr-name','pr-markup','pr-tax','pr-vat','pr-min'].forEach(id=>el(id).value='');el('pr-add-btn').innerHTML='<i class="ti ti-plus"></i>Добавить';el('pr-cancel-btn').style.display='none';editingProfile=null;}
+function editProfile(id){
+  var p=DB.profiles.find(p=>p.id===id);if(!p)return;
+  editingProfile=id;
+  el('pr-name').value=p.name;el('pr-markup').value=p.markup;el('pr-tax').value=p.tax;el('pr-vat').value=p.vat;el('pr-min').value=p.min;
+  el('pr-add-btn').innerHTML='<i class="ti ti-check"></i>Сохранить';
+  el('pr-cancel-btn').style.display='inline-flex';
+  el('pr-name').focus();el('pr-name').scrollIntoView({behavior:'smooth',block:'center'});
 }
-function delProfile(id){DB.profiles=DB.profiles.filter(p=>p.id!==id);renderProfiles();dbSave();}
+function addProfile(){
+  var name=el('pr-name').value.trim();if(!name)return;
+  if(editingProfile){
+    var p=DB.profiles.find(p=>p.id===editingProfile);
+    if(p){p.name=name;p.markup=+el('pr-markup').value||50;p.tax=+el('pr-tax').value||6;p.vat=+el('pr-vat').value||0;p.min=+el('pr-min').value||500;}
+  } else {
+    DB.profiles.push({id:Date.now(),name,markup:+el('pr-markup').value||50,tax:+el('pr-tax').value||6,vat:+el('pr-vat').value||0,min:+el('pr-min').value||500});
+  }
+  clearProfileForm();renderProfiles();dbSave();
+}
+function delProfile(id){if(!confirm('Удалить профиль?'))return;DB.profiles=DB.profiles.filter(p=>p.id!==id);renderProfiles();dbSave();}
 function renderProfiles(){
   var e=el('profile-list');
   if(!DB.profiles.length){e.innerHTML='<div class="empty">Нет профилей</div>';return;}
-  e.innerHTML=DB.profiles.map(p=>`<div class="list-item"><div><div class="li-name">${p.name}</div><div class="li-meta">+${p.markup}% · налог ${p.tax}%${p.vat?' · НДС '+p.vat+'%':''} · мин. ${fmtN(p.min)} ₽</div></div><div class="li-actions"><button class="btn sm danger" onclick="delProfile(${p.id})"><i class="ti ti-trash"></i></button></div></div>`).join('');
+  e.innerHTML=DB.profiles.map(p=>`<div class="list-item"><div><div class="li-name">${p.name}</div><div class="li-meta">+${p.markup}% · налог ${p.tax}%${p.vat?' · НДС '+p.vat+'%':''} · мин. ${fmtN(p.min)} ₽</div></div><div class="li-actions"><button class="btn sm" onclick="editProfile(${p.id})" title="Редактировать"><i class="ti ti-pencil"></i></button><button class="btn sm danger" onclick="delProfile(${p.id})" title="Удалить"><i class="ti ti-trash"></i></button></div></div>`).join('');
 }
 
 // ═══════════ POSTPROCESS ═══════════
-function addPP(){
-  var name=el('pp-name').value.trim(); if(!name)return;
-  DB.postprocess.push({id:Date.now(),name,price:+el('pp-price').value||100,desc:el('pp-desc').value});
-  ['pp-name','pp-price','pp-desc'].forEach(id=>el(id).value='');
-  renderPP(); dbSave();
+function clearPPForm(){['pp-name','pp-price','pp-desc'].forEach(id=>el(id).value='');el('pp-add-btn').innerHTML='<i class="ti ti-plus"></i>Добавить';el('pp-cancel-btn').style.display='none';editingPPid=null;}
+function editPP(id){
+  var p=DB.postprocess.find(p=>p.id===id);if(!p)return;
+  editingPPid=id;
+  el('pp-name').value=p.name;el('pp-price').value=p.price;el('pp-desc').value=p.desc||'';
+  el('pp-add-btn').innerHTML='<i class="ti ti-check"></i>Сохранить';
+  el('pp-cancel-btn').style.display='inline-flex';
+  el('pp-name').focus();el('pp-name').scrollIntoView({behavior:'smooth',block:'center'});
 }
-function delPP(id){DB.postprocess=DB.postprocess.filter(p=>p.id!==id);renderPP();dbSave();}
+function addPP(){
+  var name=el('pp-name').value.trim();if(!name)return;
+  if(editingPPid){
+    var p=DB.postprocess.find(p=>p.id===editingPPid);
+    if(p){p.name=name;p.price=+el('pp-price').value||100;p.desc=el('pp-desc').value;}
+  } else {
+    DB.postprocess.push({id:Date.now(),name,price:+el('pp-price').value||100,desc:el('pp-desc').value});
+  }
+  clearPPForm();renderPP();dbSave();
+}
+function delPP(id){if(!confirm('Удалить операцию?'))return;DB.postprocess=DB.postprocess.filter(p=>p.id!==id);renderPP();dbSave();}
 function renderPP(){
   var e=el('pp-list');
   if(!DB.postprocess.length){e.innerHTML='<div class="empty">Нет операций</div>';return;}
-  e.innerHTML=DB.postprocess.map(p=>`<div class="list-item"><div><div class="li-name">${p.name}</div><div class="li-meta">${fmtN(p.price)} ₽${p.desc?' · '+p.desc:''}</div></div><div class="li-actions"><button class="btn sm danger" onclick="delPP(${p.id})"><i class="ti ti-trash"></i></button></div></div>`).join('');
+  e.innerHTML=DB.postprocess.map(p=>`<div class="list-item"><div><div class="li-name">${p.name}</div><div class="li-meta">${fmtN(p.price)} ₽${p.desc?' · '+p.desc:''}</div></div><div class="li-actions"><button class="btn sm" onclick="editPP(${p.id})" title="Редактировать"><i class="ti ti-pencil"></i></button><button class="btn sm danger" onclick="delPP(${p.id})" title="Удалить"><i class="ti ti-trash"></i></button></div></div>`).join('');
 }
 
 // ═══════════ CLIENT ═══════════
