@@ -426,6 +426,7 @@ html,body{height:100%;background:var(--bg);color:var(--text)}
       <div class="rl sub"><span class="rn">Расходники</span><span class="rv" id="res-cons">—</span></div>
       <div class="rl sub"><span class="rn">Электро + накладные</span><span class="rv" id="res-infra">—</span></div>
       <div class="rl sub"><span class="rn">Труд оператора</span><span class="rv" id="res-labor">—</span></div>
+      <div class="rl sub"><span class="rn">Затраты оператора на заказ</span><span class="rv" id="res-oplabor">—</span></div>
       <div class="rl sub"><span class="rn">Надбавка за брак</span><span class="rv" id="res-risk">—</span></div>
       <div class="rl sub"><span class="rn">Постобработка</span><span class="rv" id="res-post">—</span></div>
     </div>
@@ -800,7 +801,7 @@ function calcOrder(){
   el('d-mass').textContent=massG.toFixed(1)+' г';
   el('d-mcost').textContent=vol>0?fmt(matCost):'—';
   if(!printer||!mat||!profile||vol===0||time===0){
-    ['res-mat','res-mach','res-cons','res-infra','res-labor','res-risk','res-post','res-cost','res-markup','res-tax','res-vat','res-ship','res-final','res-profit'].forEach(id=>{var e=el(id);if(e)e.textContent='—';});
+    ['res-mat','res-mach','res-cons','res-infra','res-labor','res-oplabor','res-risk','res-post','res-cost','res-markup','res-tax','res-vat','res-ship','res-final','res-profit'].forEach(id=>{var e=el(id);if(e)e.textContent='—';});
     el('rs-mass').textContent='—'; el('res-note').textContent='';
     el('res-minwarn').style.display='none';
     el('res-stack').innerHTML=''; el('res-legend').innerHTML=''; return;
@@ -810,11 +811,13 @@ function calcOrder(){
   var consCost=(time*2)/qty;
   var infraCost=(time*(ohPerHr()+(printer.watt/1000)*(printer.kwh||6)))/qty;
   var labCost=(laborTime()*complexity/60)*laborRate()/qty;
+  var opOrderCost=(time/100)*laborRate();
   var f=failRate/100;
   var base=matCost+machCost+consCost+infraCost+labCost;
   var riskCost=base*f/(1-f);
   var ppTotal=Object.values(selPP).reduce((a,b)=>a+b,0)+extra;
-  var cost=base+riskCost+ppTotal;
+  var cost=base+riskCost+opOrderCost+ppTotal;
+
   var mk=profile.markup/100, tx=profile.tax/100, vt=(profile.vat||0)/100;
   var pNoVat=cost*(1+mk)/(1-tx);
   var mkAmt=pNoVat-cost, txAmt=pNoVat*tx, vtAmt=pNoVat*vt;
@@ -826,7 +829,7 @@ function calcOrder(){
   var margin=final>0?Math.round(profit/final*100):0;
   var s=(id,v)=>{var e=el(id);if(e)e.textContent=v;};
   s('res-mat',fmt(matCost)); s('res-mach',fmt(machCost)); s('res-cons',fmt(consCost));
-  s('res-infra',fmt(infraCost)); s('res-labor',fmt(labCost)); s('res-risk',fmt(riskCost));
+  s('res-infra',fmt(infraCost)); s('res-labor',fmt(labCost)); s('res-oplabor',fmt(opOrderCost)); s('res-risk',fmt(riskCost));
   s('res-post',ppTotal>0?fmt(ppTotal):'—'); s('res-cost',fmt(cost));
   s('res-markup','+'+fmt(mkAmt)); s('res-tax','−'+fmt(txAmt));
   s('res-vat',vtAmt>0?'+'+fmt(vtAmt):'—'); s('res-ship',ship>0?'+'+fmt(ship):'—');
@@ -836,7 +839,7 @@ function calcOrder(){
   if(isMin)el('res-minwarn').textContent='Мин. цена профиля '+fmtN(profile.min)+' ₽ — применена';
   var segs=[
     {l:'Материал',v:matCost,c:'#378ADD'},{l:'Машина',v:machCost+consCost,c:'#1D9E75'},
-    {l:'Накладные',v:infraCost,c:'#BA7517'},{l:'Труд',v:labCost,c:'#7F77DD'},
+    {l:'Накладные',v:infraCost,c:'#BA7517'},{l:'Труд',v:labCost,c:'#7F77DD'},{l:'Затр.опер.',v:opOrderCost,c:'#5DCAA5'},
     {l:'Риск',v:riskCost,c:'#E24B4A'},{l:'Постобр.',v:ppTotal,c:'#D85A30'},
     {l:'Наценка',v:mkAmt,c:'#3dd68c'},{l:'Налог',v:txAmt+vtAmt,c:'#606070'}
   ].filter(sg=>sg.v>0.5);
