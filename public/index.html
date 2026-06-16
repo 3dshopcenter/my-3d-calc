@@ -514,6 +514,19 @@ html,body{height:100%;background:var(--bg);color:var(--text)}
 
     <div class="csection">
       <div class="csec-title">Геометрия детали</div>
+
+      <!-- STL загрузка -->
+      <div id="stl-drop-zone" onclick="el('stl-file-input').click()" style="border:1.5px dashed var(--border2);border-radius:var(--r2);padding:20px;text-align:center;cursor:pointer;margin-bottom:10px;transition:all .2s;background:var(--bg3)" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)'" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border2)'" ondrop="handleStlDrop(event)">
+        <i class="ti ti-upload" style="font-size:28px;color:var(--text3);display:block;margin-bottom:6px" aria-hidden="true"></i>
+        <div style="font-size:13px;font-weight:500;color:var(--text2)" id="stl-drop-label">Загрузить STL файл</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px">Нажми или перетащи .stl файл</div>
+        <input type="file" id="stl-file-input" accept=".stl" style="display:none" onchange="loadStlFile(this.files[0])"/>
+      </div>
+
+      <!-- Статус загрузки -->
+      <div id="stl-status" style="display:none;font-size:12px;border-radius:var(--r);padding:8px 12px;margin-bottom:10px"></div>
+
+      <!-- Габариты — заполняются автоматически из STL или вручную -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
         <div><label class="flabel">Длина X (мм)</label><input class="nf hl" id="sl-x" type="number" placeholder="80" oninput="calcSlicer()"/></div>
         <div><label class="flabel">Ширина Y (мм)</label><input class="nf hl" id="sl-y" type="number" placeholder="60" oninput="calcSlicer()"/></div>
@@ -522,6 +535,7 @@ html,body{height:100%;background:var(--bg);color:var(--text)}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div><label class="flabel">Форма детали</label>
           <select class="sf" id="sl-shape" onchange="calcSlicer()">
+            <option value="stl">Из STL (точный объём)</option>
             <option value="box">Прямоугольник / корпус</option>
             <option value="cylinder">Цилиндр</option>
             <option value="sphere">Сфера</option>
@@ -1371,6 +1385,152 @@ function calcCompetitor(myFinal, myCost, myMarginPct, massG){
 
 // ═══════════ VIRTUAL SLICER ═══════════
 
+// ═══════════ STL PARSER ═══════════
+
+var stlGeoVolMm3 = 0; // точный объём из STL
+
+function handleStlDrop(e){
+  e.preventDefault();
+  e.currentTarget.style.borderColor='var(--border2)';
+  var file = e.dataTransfer.files[0];
+  if(file) loadStlFile(file);
+}
+
+function loadStlFile(file){
+  if(!file) return;
+  var label = el('stl-drop-label');
+  var status = el('stl-status');
+  label.textContent = 'Читаю файл...';
+  status.style.display='none';
+
+  var reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      var buf = e.target.result;
+      var result = parseSTL(buf);
+      stlGeoVolMm3 = result.volume;
+
+      // Заполняем габариты
+      el('sl-x').value = result.sizeX.toFixed(1);
+      el('sl-y').value = result.sizeY.toFixed(1);
+      el('sl-z').value = result.sizeZ.toFixed(1);
+
+      // Переключаем форму на STL
+      el('sl-shape').value = 'stl';
+
+      label.textContent = file.name;
+      status.style.display='block';
+      status.style.background='var(--green-bg)';
+      status.style.border='1px solid var(--green-border)';
+      status.style.color='var(--green)';
+      status.innerHTML = '<i class="ti ti-check" style="margin-right:5px"></i>'
+        + 'Загружено: ' + result.triangles.toLocaleString('ru') + ' треугольников · '
+        + 'Объём: ' + (result.volume/1000).toFixed(2) + ' см³ · '
+        + 'Размер: ' + result.sizeX.toFixed(0)+'×'+result.sizeY.toFixed(0)+'×'+result.sizeZ.toFixed(0)+' мм';
+
+      el('stl-drop-zone').style.borderColor='var(--green-border)';
+      calcSlicer();
+    } catch(err){
+      label.textContent = 'Загрузить STL файл';
+      status.style.display='block';
+      status.style.background='var(--red-bg)';
+      status.style.border='1px solid var(--red-border)';
+      status.style.color='var(--red)';
+      status.textContent = 'Ошибка: ' + err.message;
+      el('stl-drop-zone').style.borderColor='var(--red-border)';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function parseSTL(buffer){
+  var view = new DataView(buffer);
+  var isBinary = false;
+
+  // Проверяем бинарный или ASCII STL
+  if(buffer.byteLength > 84){
+    var numTriangles = view.getUint32(80, true);
+    var expectedSize = 84 + numTriangles * 50;
+    if(Math.abs(expectedSize - buffer.byteLength) < 10) isBinary = true;
+  }
+
+  if(isBinary){
+    return parseBinarySTL(view, buffer);
+  } else {
+    var text = new TextDecoder().decode(buffer);
+    return parseAsciiSTL(text);
+  }
+}
+
+function parseBinarySTL(view, buffer){
+  var numTriangles = view.getUint32(80, true);
+  var volume = 0;
+  var minX=Infinity,minY=Infinity,minZ=Infinity;
+  var maxX=-Infinity,maxY=-Infinity,maxZ=-Infinity;
+
+  for(var i=0; i<numTriangles; i++){
+    var offset = 84 + i*50 + 12; // skip normal
+    var v = [];
+    for(var j=0; j<3; j++){
+      var x = view.getFloat32(offset + j*12,     true);
+      var y = view.getFloat32(offset + j*12 + 4,  true);
+      var z = view.getFloat32(offset + j*12 + 8,  true);
+      v.push([x,y,z]);
+      if(x<minX)minX=x; if(x>maxX)maxX=x;
+      if(y<minY)minY=y; if(y>maxY)maxY=y;
+      if(z<minZ)minZ=z; if(z>maxZ)maxZ=z;
+    }
+    // Метод дивергенции (signed volume)
+    volume += signedTriVol(v[0],v[1],v[2]);
+  }
+
+  return {
+    volume:    Math.abs(volume),
+    triangles: numTriangles,
+    sizeX: maxX-minX,
+    sizeY: maxY-minY,
+    sizeZ: maxZ-minZ
+  };
+}
+
+function parseAsciiSTL(text){
+  var volume = 0;
+  var minX=Infinity,minY=Infinity,minZ=Infinity;
+  var maxX=-Infinity,maxY=-Infinity,maxZ=-Infinity;
+  var triangles = 0;
+  var vertexRe = /vertex\s+([\d.eE+\-]+)\s+([\d.eE+\-]+)\s+([\d.eE+\-]+)/g;
+  var verts = [], m;
+
+  while((m = vertexRe.exec(text)) !== null){
+    var x=parseFloat(m[1]), y=parseFloat(m[2]), z=parseFloat(m[3]);
+    verts.push([x,y,z]);
+    if(x<minX)minX=x; if(x>maxX)maxX=x;
+    if(y<minY)minY=y; if(y>maxY)maxY=y;
+    if(z<minZ)minZ=z; if(z>maxZ)maxZ=z;
+    if(verts.length===3){
+      volume += signedTriVol(verts[0],verts[1],verts[2]);
+      verts=[];
+      triangles++;
+    }
+  }
+
+  return {
+    volume:    Math.abs(volume),
+    triangles: triangles,
+    sizeX: maxX-minX,
+    sizeY: maxY-minY,
+    sizeZ: maxZ-minZ
+  };
+}
+
+function signedTriVol(a,b,c){
+  return (a[0]*(b[1]*c[2]-b[2]*c[1])
+        + a[1]*(b[2]*c[0]-b[0]*c[2])
+        + a[2]*(b[0]*c[1]-b[1]*c[0])) / 6.0;
+}
+
+// ═══════════ VIRTUAL SLICER ═══════════
+
 function initSlicer(){
   el('sl-material').innerHTML = DB.materials.filter(m=>m.tech==='FDM').map(m=>`<option value="${m.id}">${m.name} — ρ=${m.density}</option>`).join('');
   el('sl-profile').innerHTML  = DB.profiles.map(p=>`<option value="${p.id}">${p.name} (+${p.markup}%)</option>`).join('');
@@ -1400,6 +1560,7 @@ function calcSlicer(){
   var bboxVol = X*Y*Z;
   var geoVol;
   switch(shape){
+    case 'stl':      geoVol = stlGeoVolMm3 > 0 ? stlGeoVolMm3 : bboxVol; break;
     case 'cylinder': geoVol = Math.PI*(Math.min(X,Y)/2)*(Math.min(X,Y)/2)*Z; break;
     case 'sphere':   geoVol = (4/3)*Math.PI*Math.pow(Math.min(X,Y,Z)/2,3); break;
     case 'custom':   geoVol = bboxVol*(custPct/100); break;
@@ -1407,6 +1568,9 @@ function calcSlicer(){
   }
   var surface; // площадь поверхности мм²
   switch(shape){
+    case 'stl':
+      // для STL оцениваем поверхность через bbox
+      surface = 2*(X*Y + Y*Z + X*Z) * (stlGeoVolMm3/Math.max(bboxVol,1)); break;
     case 'cylinder':
       var r=Math.min(X,Y)/2;
       surface = 2*Math.PI*r*r + 2*Math.PI*r*Z; break;
