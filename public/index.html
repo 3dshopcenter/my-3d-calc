@@ -130,6 +130,9 @@ html,body{height:100%;background:var(--bg);color:var(--text)}
 .bleg{display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace}
 .bleg-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
 .profit-note{font-size:11px;color:var(--text3);text-align:center;font-family:'JetBrains Mono',monospace;padding-top:2px}
+.comp-win{background:var(--green-bg);border:1px solid var(--green-border);color:var(--green)}
+.comp-lose{background:var(--red-bg);border:1px solid var(--red-border);color:var(--red)}
+.comp-even{background:var(--amber-bg);border:1px solid var(--amber-border);color:var(--amber)}
 
 /* ══ TESTER ══ */
 .tester-wrap{flex:1;overflow-y:auto;padding:1.25rem 1.5rem}
@@ -423,6 +426,21 @@ html,body{height:100%;background:var(--bg);color:var(--text)}
       </div>
     </div>
 
+    <!-- АНАЛИЗ КОНКУРЕНТА -->
+    <div class="csection" id="comp-section">
+      <div class="csec-title" style="justify-content:space-between;display:flex;align-items:center">
+        <span>Анализ конкурента</span>
+        <button onclick="toggleComp()" id="comp-toggle-btn" style="padding:3px 10px;border-radius:var(--r);border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:11px;cursor:pointer;font-family:'Onest',sans-serif">Включить</button>
+      </div>
+      <div id="comp-body" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div><label class="flabel">Цена конкурента за деталь (₽)</label><input class="nf" id="comp-price" type="number" placeholder="500" oninput="calcOrder()"/></div>
+          <div><label class="flabel">Или ставка ₽/г (если известна)</label><input class="nf" id="comp-pergram" type="number" step="0.5" placeholder="4" oninput="compFromGram()"/></div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:6px">Введи цену конкурента — калькулятор покажет их вероятную себестоимость, маржу и где они теряют деньги</div>
+      </div>
+    </div>
+
   </div>
 
   <div class="client-result">
@@ -467,6 +485,21 @@ html,body{height:100%;background:var(--bg);color:var(--text)}
     </div>
     <div class="rl"><span class="rn" style="color:var(--text3);font-size:11px">Чистая прибыль</span><span class="rv" id="res-profit" style="font-size:13px;color:var(--green)">—</span></div>
     <div class="profit-note" id="res-note"></div>
+
+    <!-- БЛОК АНАЛИЗА КОНКУРЕНТА -->
+    <div id="comp-result" style="display:none">
+      <div style="border-top:1px solid var(--border2);margin:8px 0"></div>
+      <div class="rh" style="margin-bottom:8px;display:flex;align-items:center;gap:6px"><i class="ti ti-eye" style="font-size:14px;color:var(--amber)" aria-hidden="true"></i>Анализ конкурента</div>
+      <div class="rl sub"><span class="rn">Цена конкурента</span><span class="rv" id="comp-r-price" style="color:var(--amber)">—</span></div>
+      <div class="rl sub"><span class="rn">Твоя цена</span><span class="rv" id="comp-r-mine">—</span></div>
+      <div class="rl sub"><span class="rn">Разница</span><span class="rv" id="comp-r-diff">—</span></div>
+      <div style="border-top:0.5px solid var(--border);margin:6px 0"></div>
+      <div class="rl sub"><span class="rn">Их вероятная себест./г</span><span class="rv" id="comp-r-costpg">—</span></div>
+      <div class="rl sub"><span class="rn">Их маржа (оценка)</span><span class="rv" id="comp-r-margin">—</span></div>
+      <div class="rl sub"><span class="rn">Твоя маржа</span><span class="rv" id="comp-r-mymargin">—</span></div>
+      <div style="border-top:0.5px solid var(--border);margin:6px 0"></div>
+      <div id="comp-verdict" style="font-size:12px;line-height:1.6;padding:8px 10px;border-radius:var(--r);margin-top:4px"></div>
+    </div>
   </div>
 </div>
 </div>
@@ -925,6 +958,9 @@ function calcOrder(){
   var tot=segs.reduce((a,b)=>a+b.v,0);
   el('res-stack').innerHTML=segs.map(sg=>`<div class="bar-seg" style="flex:${tot>0?Math.round(sg.v/tot*100):0};background:${sg.c}"></div>`).join('');
   el('res-legend').innerHTML=segs.map(sg=>`<div class="bleg"><span class="bleg-dot" style="background:${sg.c}"></span>${sg.l} ${tot>0?Math.round(sg.v/tot*100):0}%</div>`).join('');
+
+  // Анализ конкурента
+  calcCompetitor(final, cost, margin, massG);
 }
 
 // ═══════════ TESTER ═══════════
@@ -1075,6 +1111,84 @@ function tAskFix(){
 }
 
 // ═══════════ INIT ═══════════
+var compEnabled = false;
+
+function toggleComp(){
+  compEnabled = !compEnabled;
+  el('comp-body').style.display = compEnabled ? 'block' : 'none';
+  el('comp-toggle-btn').textContent = compEnabled ? 'Выключить' : 'Включить';
+  el('comp-toggle-btn').style.background = compEnabled ? 'var(--accent-bg)' : 'var(--bg3)';
+  el('comp-toggle-btn').style.color = compEnabled ? 'var(--accent)' : 'var(--text2)';
+  el('comp-result').style.display = compEnabled ? 'block' : 'none';
+  if(compEnabled) calcOrder();
+}
+
+function compFromGram(){
+  var pgVal = +el('comp-pergram').value || 0;
+  var mass = +el('c-mass') ? +el('c-mass').value : 0;
+  // пересчитываем из ₽/г в цену детали на основе массы из слайсера
+  var vol = +el('c-vol').value || 0;
+  var supp = +el('c-supp').value || 0;
+  var mat = DB.materials.find(m => m.id === +el('c-material').value);
+  var density = mat ? mat.density : 1.27;
+  var massG = vol * (1 + supp/100) * density;
+  if(pgVal > 0 && massG > 0){
+    el('comp-price').value = Math.round(pgVal * massG);
+  }
+  calcOrder();
+}
+
+function calcCompetitor(myFinal, myCost, myMarginPct, massG){
+  if(!compEnabled) return;
+  var compPrice = +el('comp-price').value || 0;
+  if(compPrice <= 0){ el('comp-result').style.display='none'; return; }
+  el('comp-result').style.display = 'block';
+
+  var diff = myFinal - compPrice;
+  var compCostPg = massG > 0 ? (compPrice * 0.55 / massG) : 0; // оценка: ~55% себестоимость
+  var compMarginEst = 35; // типичная маржа конкурента без точного учёта
+
+  // Предполагаемая себестоимость конкурента (обычно 50-65% от цены при ставке ₽/г)
+  var compCostEst = compPrice * 0.58;
+  var compMargin = compPrice > 0 ? Math.round((compPrice - compCostEst) / compPrice * 100) : 0;
+
+  var s = (id, v) => { var e = el(id); if(e) e.textContent = v; };
+  s('comp-r-price', fmt(compPrice) + ' ₽');
+  s('comp-r-mine',  fmt(Math.round(myFinal)) + ' ₽');
+  s('comp-r-diff',  (diff > 0 ? '+' : '') + fmt(diff) + ' ₽ ' + (diff > 0 ? '(ты дороже)' : '(ты дешевле)'));
+  s('comp-r-costpg', massG > 0 ? (compPrice * 0.58 / massG).toFixed(1) + ' ₽/г (оценка)' : '—');
+  s('comp-r-margin', '~' + compMargin + '% (оценка)');
+  s('comp-r-mymargin', Math.round(myMarginPct) + '% (точно)');
+
+  var vd = el('comp-verdict');
+  if(diff < 0){
+    // Мы дешевле
+    var gap = Math.abs(diff);
+    if(myCost < compCostEst){
+      vd.className = 'comp-win';
+      vd.innerHTML = `Ты дешевле на ${fmt(gap)} ₽ и при этом <b>точно знаешь свою себестоимость</b>. Конкурент скорее всего не считает реальные накладные — работает в минус или с микромаржей. Можешь держать эту цену уверенно.`;
+    } else {
+      vd.className = 'comp-even';
+      vd.innerHTML = `Ты дешевле на ${fmt(gap)} ₽, но твоя маржа ${Math.round(myMarginPct)}%. Проверь — не демпингуешь ли ты сам? Если клиент ценит качество и сроки, попробуй поднять цену на ${fmt(Math.round(gap*0.5))} ₽.`;
+    }
+  } else if(diff === 0){
+    vd.className = 'comp-even';
+    vd.innerHTML = `Одинаковая цена. Конкурируй качеством, сроками и сервисом — не ценой.`;
+  } else {
+    // Мы дороже
+    if(diff < myFinal * 0.15){
+      vd.className = 'comp-even';
+      vd.innerHTML = `Ты дороже на ${fmt(diff)} ₽ (${Math.round(diff/myFinal*100)}%). Небольшой разрыв — клиент может выбрать тебя за качество. Объясни чем ты лучше: материал, постобработка, сроки, гарантия.`;
+    } else if(myMarginPct > 25){
+      vd.className = 'comp-even';
+      vd.innerHTML = `Ты дороже на ${fmt(diff)} ₽. У тебя есть запас маржи (${Math.round(myMarginPct)}%) — можешь снизить цену до ${fmt(Math.round(myFinal - diff*0.7))} ₽ и всё равно остаться в прибыли.`;
+    } else {
+      vd.className = 'comp-lose';
+      vd.innerHTML = `Ты дороже на ${fmt(diff)} ₽, а маржа уже низкая (${Math.round(myMarginPct)}%). Снижать цену рискованно. Лучше оптимизируй: больше деталей в запуске, переговоры с поставщиком материала, загрузка принтера.`;
+    }
+  }
+}
+
 function renderAll(){renderPrinters();renderMaterials();renderOH();renderLabor();renderProfiles();renderPP();}
 dbLoad();renderAll();
 </script>
