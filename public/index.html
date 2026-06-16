@@ -131,6 +131,13 @@ html,body{height:100%;background:var(--bg);color:var(--text)}
 .bleg-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
 .profit-note{font-size:11px;color:var(--text3);text-align:center;font-family:'JetBrains Mono',monospace;padding-top:2px}
 .comp-win{background:var(--green-bg);border:1px solid var(--green-border);color:var(--green)}
+.nf.required{border-color:var(--amber)!important;background:rgba(245,166,35,.06)!important}
+.nf.required-error{border-color:var(--red)!important;background:var(--red-bg)!important}
+.nf.filled{border-color:var(--green-border)!important}
+.req-hint{font-size:11px;color:var(--amber);margin-top:8px;display:flex;align-items:center;gap:5px;padding:6px 10px;background:var(--amber-bg);border-radius:var(--r);border:1px solid var(--amber-border)}
+.deadline-ok{color:var(--green)!important;background:var(--green-bg)!important;border-color:var(--green-border)!important}
+.deadline-warn{color:var(--amber)!important;background:var(--amber-bg)!important;border-color:var(--amber-border)!important}
+.deadline-fail{color:var(--red)!important;background:var(--red-bg)!important;border-color:var(--red-border)!important}
 .comp-lose{background:var(--red-bg);border:1px solid var(--red-border);color:var(--red)}
 .comp-even{background:var(--amber-bg);border:1px solid var(--amber-border);color:var(--amber)}
 
@@ -384,6 +391,12 @@ html,body{height:100%;background:var(--bg);color:var(--text)}
       </div>
     </div>
 
+    <!-- Подсказка обязательных полей -->
+    <div id="req-hint" class="req-hint" style="margin-bottom:8px;display:none">
+      <i class="ti ti-alert-triangle" style="font-size:14px" aria-hidden="true"></i>
+      <span id="req-hint-text">Заполни обязательные поля для расчёта</span>
+    </div>
+
     <div class="csection">
       <div class="csec-title">Объём из слайсера</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
@@ -400,18 +413,25 @@ html,body{height:100%;background:var(--bg);color:var(--text)}
 
     <div class="csection">
       <div class="csec-title">Параметры печати</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
-        <div><label class="flabel">Время печати запуска (ч)</label><input class="nf" id="c-time" type="number" step="0.5" placeholder="6" oninput="calcOrder()"/></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+        <div><label class="flabel">Время печати запуска (ч) <span style="color:var(--amber)">*</span></label><input class="nf required" id="c-time" type="number" step="0.5" placeholder="Обязательно" oninput="calcOrder();updateRequired()"/></div>
         <div><label class="flabel">Деталей в заказе (шт)</label><input class="nf hl" id="c-total-qty" type="number" placeholder="1" value="1" oninput="calcOrder()"/></div>
+        <div><label class="flabel">Кол-во принтеров</label><input class="nf" id="c-printers-count" type="number" placeholder="1" value="1" min="1" oninput="calcOrder()"/></div>
+        <div><label class="flabel">Дедлайн (дней)</label><input class="nf" id="c-deadline" type="number" placeholder="—" min="1" oninput="calcOrder()"/></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div><label class="flabel">Сложность</label><select class="sf" id="c-complexity" onchange="calcOrder()"><option value="1">Простая</option><option value="1.5" selected>Средняя</option><option value="2">Сложная</option><option value="3">Очень сложная</option></select></div>
         <div><label class="flabel">Профиль клиента</label><select class="sf" id="c-profile" onchange="calcOrder()"></select></div>
       </div>
       <!-- Оптовый блок — запуски -->
       <div class="derived-row" id="batch-info" style="margin-top:8px;display:none">
-        <div class="derived-chip"><span class="dl">Запусков принтера</span><span class="dv" id="d-runs">—</span></div>
+        <div class="derived-chip"><span class="dl">Запусков / принтер</span><span class="dv" id="d-runs">—</span></div>
         <div class="derived-chip"><span class="dl">Всего машино-часов</span><span class="dv" id="d-total-time">—</span></div>
         <div class="derived-chip"><span class="dl">Всего материала</span><span class="dv" id="d-total-mat">—</span></div>
+        <div class="derived-chip" id="d-deadline-chip" style="display:none"><span class="dl">Срок выполнения</span><span class="dv" id="d-deadline-val">—</span></div>
       </div>
+      <!-- Дедлайн-вердикт -->
+      <div id="deadline-verdict" style="display:none;margin-top:8px;font-size:12px;padding:8px 12px;border-radius:var(--r);border:1px solid"></div>
     </div>
 
     <div class="csection">
@@ -472,7 +492,9 @@ html,body{height:100%;background:var(--bg);color:var(--text)}
       <div style="border-top:1px solid var(--border2);margin:8px 0"></div>
       <div class="rh" style="margin-bottom:6px">Итого партия</div>
       <div class="rl sub"><span class="rn">Деталей</span><span class="rv" id="res-batch-qty">—</span></div>
-      <div class="rl sub"><span class="rn">Запусков</span><span class="rv" id="res-batch-runs">—</span></div>
+      <div class="rl sub"><span class="rn">Принтеров задействовано</span><span class="rv" id="res-batch-printers">—</span></div>
+      <div class="rl sub"><span class="rn">Запусков / принтер</span><span class="rv" id="res-batch-runs">—</span></div>
+      <div class="rl sub"><span class="rn">Срок выполнения</span><span class="rv" id="res-batch-duration">—</span></div>
       <div class="rl sub"><span class="rn">Себестоимость партии</span><span class="rv" id="res-batch-cost">—</span></div>
       <div style="border-top:1px solid var(--border2);margin:8px 0"></div>
       <div class="rl" style="padding-top:4px"><span class="rn" style="font-weight:500;font-size:14px;color:var(--text)">Цена партии клиенту</span><span class="rv" id="res-batch-final" style="font-size:20px;font-weight:500;color:var(--green);font-family:'JetBrains Mono',monospace">—</span></div>
@@ -985,6 +1007,45 @@ function renderPP(){
 
 // ═══════════ CLIENT ═══════════
 var selPP = {};
+
+// ═══ ПОДСВЕТКА ОБЯЗАТЕЛЬНЫХ ПОЛЕЙ ═══
+var REQUIRED_FIELDS = [
+  {id:'c-vol',      label:'Объём детали (см³)'},
+  {id:'c-time',     label:'Время печати запуска (ч)'},
+  {id:'c-printer',  label:'Принтер'},
+  {id:'c-material', label:'Материал'},
+  {id:'c-profile',  label:'Профиль клиента'}
+];
+
+function updateRequired(){
+  var missing = [];
+  REQUIRED_FIELDS.forEach(function(f){
+    var e = el(f.id); if(!e) return;
+    var val = e.value;
+    var isEmpty = !val || val==='0' || val==='';
+    if(e.tagName==='INPUT'){
+      if(isEmpty){
+        e.classList.add('required'); e.classList.remove('filled','required-error');
+        missing.push(f.label);
+      } else {
+        e.classList.remove('required','required-error'); e.classList.add('filled');
+      }
+    }
+  });
+  var hint = el('req-hint');
+  var hintText = el('req-hint-text');
+  if(hint){
+    if(missing.length>0){
+      hint.style.display='flex';
+      hintText.textContent = 'Заполни: ' + missing.join(', ');
+    } else {
+      hint.style.display='none';
+    }
+  }
+  return missing.length===0;
+}
+
+
 function populateClient(){
   el('c-printer').innerHTML = DB.printers.map(p=>`<option value="${p.id}">${p.name} (${p.tech})</option>`).join('');
   el('c-material').innerHTML = DB.materials.map(m=>`<option value="${m.id}">${m.name} — ρ=${m.density}</option>`).join('');
@@ -993,7 +1054,7 @@ function populateClient(){
   if(!DB.postprocess.length){ppOps.innerHTML='<div style="font-size:12px;color:var(--text3)">Добавь операции в настройках</div>';} else {
     ppOps.innerHTML=DB.postprocess.map(p=>`<button class="op-tog" id="pp-${p.id}" onclick="togPP(${p.id},this)"><span>${p.name}<br><span style="font-size:10px;color:var(--text3)">${fmtN(p.price)} ₽${p.desc?' · '+p.desc:''}</span></span><span class="dot"></span></button>`).join('');
   }
-  onMC(); calcOrder();
+  onMC(); calcOrder(); updateRequired();
 }
 function onPC(){calcOrder();}
 function onMC(){
@@ -1025,6 +1086,7 @@ function ohPerHr(){
   return o.hours>0?tot/o.hours:0;
 }
 function calcOrder(){
+  updateRequired();
   var printer=DB.printers.find(p=>p.id===+el('c-printer').value);
   var mat=DB.materials.find(m=>m.id===+el('c-material').value);
   var profile=DB.profiles.find(p=>p.id===+el('c-profile').value);
@@ -1033,6 +1095,8 @@ function calcOrder(){
   var qty=+el('c-qty').value||1;          // деталей в одном запуске
   var totalQty=+el('c-total-qty').value||1; // деталей в заказе
   var time=+el('c-time').value||0;        // время одного запуска
+  var printersCount=Math.max(1,+el('c-printers-count').value||1); // кол-во принтеров
+  var deadlineDays=+el('c-deadline').value||0; // дедлайн в днях
   var complexity=+el('c-complexity').value||1.5;
   var ship=+el('c-ship').value||0;
   var extra=+el('c-extra').value||0;
@@ -1051,16 +1115,43 @@ function calcOrder(){
   el('d-mcost').textContent=vol>0?fmt(matCost):'—';
 
   // Количество запусков для всей партии
-  var runs=Math.ceil(totalQty/qty);
-  var totalTime=runs*time; // всего машино-часов на партию
+  var runs=Math.ceil(totalQty/qty);           // запусков на 1 принтер
+  var totalRuns=runs;                          // всего запусков (1 принтер)
+  var totalTime=runs*time;                     // машино-часов на 1 принтер
+  var totalTimePar=totalTime/printersCount;    // параллельное время (все принтеры)
+  var durationDays=totalTimePar/24;            // дней на выполнение
+  var durationDaysRound=Math.ceil(durationDays*10)/10;
   var isBatch=totalQty>1;
 
   // Обновляем блок информации о партии
   el('batch-info').style.display=isBatch?'grid':'none';
+  var dChip=el('d-deadline-chip');
   if(isBatch){
-    el('d-runs').textContent=runs+' шт';
+    el('d-runs').textContent=runs+' шт × '+printersCount+(printersCount>1?' принт.':' принт.');
     el('d-total-time').textContent=totalTime.toFixed(1)+' ч';
     el('d-total-mat').textContent=((massWaste*totalQty)/1000).toFixed(2)+' кг';
+    if(dChip) dChip.style.display='block';
+    el('d-deadline-val').textContent=durationDaysRound+' дн';
+    // Дедлайн-вердикт
+    var dv=el('deadline-verdict');
+    if(deadlineDays>0 && dv){
+      dv.style.display='block';
+      var diff=deadlineDays-durationDays;
+      if(diff>=2){
+        dv.className='deadline-ok'; dv.style.border='1px solid var(--green-border)';
+        dv.innerHTML='<i class="ti ti-circle-check" style="margin-right:5px"></i>Успеваешь: '+durationDaysRound+' дн из '+deadlineDays+' отведённых. Запас '+Math.floor(diff)+' дн.';
+      } else if(diff>=0){
+        dv.className='deadline-warn'; dv.style.border='1px solid var(--amber-border)';
+        dv.innerHTML='<i class="ti ti-alert-triangle" style="margin-right:5px"></i>Впритык: '+durationDaysRound+' дн — почти весь дедлайн ('+deadlineDays+' дн). Добавь принтер для запаса.';
+      } else {
+        dv.className='deadline-fail'; dv.style.border='1px solid var(--red-border)';
+        var need=Math.ceil(totalTimePar/24/deadlineDays*printersCount);
+        dv.innerHTML='<i class="ti ti-x" style="margin-right:5px"></i>Не успеваешь: нужно '+durationDaysRound+' дн, а дедлайн '+deadlineDays+' дн. Нужно минимум <b>'+need+' принт.</b> для выполнения в срок.';
+      }
+    } else if(dv){ dv.style.display='none'; }
+  } else {
+    if(dChip) dChip.style.display='none';
+    var dv2=el('deadline-verdict'); if(dv2) dv2.style.display='none';
   }
 
   if(!printer||!mat||!profile||vol===0||time===0){
@@ -1131,9 +1222,11 @@ function calcOrder(){
     var batchFinal  = Math.round(batchPNoVat + batchVat + ship);
     var batchProfit = batchPNoVat - batchCost - batchPNoVat*tx;
 
-    s('res-batch-qty',  totalQty+' шт');
-    s('res-batch-runs', runs+' запусков × '+time+' ч = '+totalTime.toFixed(1)+' ч');
-    s('res-batch-cost', fmt(batchCost));
+    s('res-batch-qty',     totalQty+' шт');
+    s('res-batch-printers',printersCount+' шт');
+    s('res-batch-runs',    runs+' зап./принт. × '+time+' ч = '+totalTime.toFixed(1)+' ч');
+    s('res-batch-duration',durationDaysRound+' дн'+(deadlineDays>0?' / дедлайн '+deadlineDays+' дн':''));
+    s('res-batch-cost',    fmt(batchCost));
     s('res-batch-final',fmt(batchFinal));
     s('res-batch-profit',fmt(batchProfit));
 
