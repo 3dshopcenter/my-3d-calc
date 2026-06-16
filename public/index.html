@@ -238,6 +238,7 @@ html,body{height:100%;background:var(--bg);color:var(--text)}
   <div class="tab-switch">
     <button class="tab-btn on"  onclick="sv('admin',this)">Настройки</button>
     <button class="tab-btn"     onclick="sv('client',this)">Заказ</button>
+    <button class="tab-btn"     onclick="sv('slicer',this)">Слайсер</button>
     <button class="tab-btn"     onclick="sv('tester',this)">Тестирование</button>
   </div>
   <div class="topbar-right" id="save-status">сохранено</div>
@@ -504,6 +505,183 @@ html,body{height:100%;background:var(--bg);color:var(--text)}
 </div>
 </div>
 
+<!-- ════════════ SLICER ════════════ -->
+<div class="view" id="view-slicer">
+<div class="client">
+
+  <!-- LEFT: параметры -->
+  <div class="client-form">
+
+    <div class="csection">
+      <div class="csec-title">Геометрия детали</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+        <div><label class="flabel">Длина X (мм)</label><input class="nf hl" id="sl-x" type="number" placeholder="80" oninput="calcSlicer()"/></div>
+        <div><label class="flabel">Ширина Y (мм)</label><input class="nf hl" id="sl-y" type="number" placeholder="60" oninput="calcSlicer()"/></div>
+        <div><label class="flabel">Высота Z (мм)</label><input class="nf hl" id="sl-z" type="number" placeholder="40" oninput="calcSlicer()"/></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><label class="flabel">Форма детали</label>
+          <select class="sf" id="sl-shape" onchange="calcSlicer()">
+            <option value="box">Прямоугольник / корпус</option>
+            <option value="cylinder">Цилиндр</option>
+            <option value="sphere">Сфера</option>
+            <option value="custom">Произвольная (% от bbox)</option>
+          </select>
+        </div>
+        <div id="sl-custom-row" style="display:none"><label class="flabel">% заполнения bbox</label><input class="nf" id="sl-custom-pct" type="number" placeholder="65" value="65" oninput="calcSlicer()"/></div>
+      </div>
+      <div class="derived-row" style="margin-top:8px">
+        <div class="derived-chip"><span class="dl">Объём bbox</span><span class="dv" id="sl-bbox-vol">— см³</span></div>
+        <div class="derived-chip"><span class="dl">Объём геометрии</span><span class="dv" id="sl-geo-vol">— см³</span></div>
+        <div class="derived-chip"><span class="dl">Площадь поверхности</span><span class="dv" id="sl-surface">— см²</span></div>
+      </div>
+    </div>
+
+    <div class="csection">
+      <div class="csec-title">Параметры FDM печати</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+        <div>
+          <label class="flabel">Толщина слоя (мм)</label>
+          <select class="sf" id="sl-layer" onchange="calcSlicer()">
+            <option value="0.1">0.10 мм — детальный</option>
+            <option value="0.15">0.15 мм — точный</option>
+            <option value="0.2" selected>0.20 мм — стандарт</option>
+            <option value="0.25">0.25 мм — быстрый</option>
+            <option value="0.3">0.30 мм — черновой</option>
+          </select>
+        </div>
+        <div>
+          <label class="flabel">Толщина стенки (мм)</label>
+          <select class="sf" id="sl-wall" onchange="calcSlicer()">
+            <option value="0.4">0.4 мм — 1 периметр</option>
+            <option value="0.8" selected>0.8 мм — 2 периметра</option>
+            <option value="1.2">1.2 мм — 3 периметра</option>
+            <option value="1.6">1.6 мм — 4 периметра</option>
+            <option value="2.0">2.0 мм — 5 периметров</option>
+            <option value="2.4">2.4 мм — 6 периметров</option>
+          </select>
+        </div>
+        <div>
+          <label class="flabel">Заполнение (%)</label>
+          <select class="sf" id="sl-infill" onchange="calcSlicer()">
+            <option value="0">0% — только стенки</option>
+            <option value="5">5% — минимум</option>
+            <option value="10">10% — лёгкий</option>
+            <option value="15" selected>15% — стандарт</option>
+            <option value="20">20% — прочный</option>
+            <option value="30">30% — усиленный</option>
+            <option value="40">40% — очень прочный</option>
+            <option value="60">60% — полупплошной</option>
+            <option value="100">100% — сплошной</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div>
+          <label class="flabel">Нижних/верхних слоёв</label>
+          <select class="sf" id="sl-topbot" onchange="calcSlicer()">
+            <option value="2">2 слоя</option>
+            <option value="3" selected>3 слоя (стандарт)</option>
+            <option value="4">4 слоя</option>
+            <option value="5">5 слоёв</option>
+          </select>
+        </div>
+        <div>
+          <label class="flabel">Скорость печати (мм/с)</label>
+          <select class="sf" id="sl-speed" onchange="calcSlicer()">
+            <option value="40">40 мм/с — медленно</option>
+            <option value="60" selected>60 мм/с — стандарт</option>
+            <option value="80">80 мм/с — быстро</option>
+            <option value="120">120 мм/с — очень быстро</option>
+            <option value="200">200 мм/с — Bambu/Voron</option>
+          </select>
+        </div>
+        <div>
+          <label class="flabel">Поддержки</label>
+          <select class="sf" id="sl-support" onchange="calcSlicer()">
+            <option value="0">Нет</option>
+            <option value="5">Минимум (~5%)</option>
+            <option value="10" selected>Стандарт (~10%)</option>
+            <option value="20">Много (~20%)</option>
+            <option value="35">Очень много (~35%)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="csection">
+      <div class="csec-title">Результат виртуального слайсера</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div class="derived-chip"><span class="dl">Объём материала (без поддержек)</span><span class="dv" id="sl-mat-vol">— см³</span></div>
+        <div class="derived-chip"><span class="dl">Объём поддержек</span><span class="dv" id="sl-sup-vol">— см³</span></div>
+        <div class="derived-chip"><span class="dl">Масса (выбранный материал)</span><span class="dv" id="sl-mass">— г</span></div>
+        <div class="derived-chip"><span class="dl">Оценка времени печати</span><span class="dv" id="sl-time">— ч</span></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:4px">
+        <div class="derived-chip"><span class="dl">Слоёв всего</span><span class="dv" id="sl-layers">—</span></div>
+        <div class="derived-chip"><span class="dl">Длина экструзии</span><span class="dv" id="sl-extrusion">— м</span></div>
+        <div class="derived-chip"><span class="dl">% стенок от объёма</span><span class="dv" id="sl-wall-pct">—</span></div>
+      </div>
+    </div>
+
+    <div class="csection">
+      <div class="csec-title">Материал и профиль для расчёта</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div><label class="flabel">Материал</label><select class="sf" id="sl-material" onchange="calcSlicer()"></select></div>
+        <div><label class="flabel">Профиль клиента</label><select class="sf" id="sl-profile" onchange="calcSlicer()"></select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><label class="flabel">Принтер</label><select class="sf" id="sl-printer" onchange="calcSlicer()"></select></div>
+        <div><label class="flabel">Деталей в запуске</label><input class="nf" id="sl-qty" type="number" placeholder="1" value="1" oninput="calcSlicer()"/></div>
+      </div>
+    </div>
+
+    <div style="padding:0 0 1rem">
+      <button onclick="slicerToOrder()" style="width:100%;padding:11px;border-radius:var(--r);border:none;background:var(--accent);color:#fff;font-size:14px;font-family:'Onest',sans-serif;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .15s" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+        <i class="ti ti-arrow-right" aria-hidden="true"></i>Перенести в Заказ и рассчитать
+      </button>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: итоги -->
+  <div class="client-result">
+    <div class="rh">Объём материала</div>
+    <div class="rl sub"><span class="rn">Стенки</span><span class="rv" id="slr-walls">—</span></div>
+    <div class="rl sub"><span class="rn">Заполнение</span><span class="rv" id="slr-infill">—</span></div>
+    <div class="rl sub"><span class="rn">Верх + низ</span><span class="rv" id="slr-topbot">—</span></div>
+    <div class="rl sub"><span class="rn">Поддержки</span><span class="rv" id="slr-support">—</span></div>
+    <div class="rl"><span class="rn" style="font-weight:500;color:var(--text)">Итого объём</span><span class="rv" id="slr-total-vol" style="color:var(--text)">—</span></div>
+
+    <div style="border-top:1px solid var(--border2);margin:8px 0"></div>
+
+    <div class="rh">Масса и материал</div>
+    <div class="rl sub"><span class="rn">Плотность</span><span class="rv" id="slr-density">—</span></div>
+    <div class="rl sub"><span class="rn">Масса детали</span><span class="rv" id="slr-mass">—</span></div>
+    <div class="rl sub"><span class="rn">Стоимость материала</span><span class="rv" id="slr-matcost">—</span></div>
+
+    <div style="border-top:1px solid var(--border2);margin:8px 0"></div>
+
+    <div class="rh">Время и стоимость</div>
+    <div class="rl sub"><span class="rn">Время печати (оценка)</span><span class="rv" id="slr-time">—</span></div>
+    <div class="rl sub"><span class="rn">Машинное время</span><span class="rv" id="slr-machcost">—</span></div>
+    <div class="rl sub"><span class="rn">Накладные</span><span class="rv" id="slr-infracost">—</span></div>
+
+    <div style="border-top:1px solid var(--border2);margin:8px 0"></div>
+
+    <div class="rl total"><span class="rn">Себестоимость / дет.</span><span class="rv" id="slr-cost" style="font-size:18px;font-weight:500;color:var(--green);font-family:'JetBrains Mono',monospace">—</span></div>
+    <div class="rl"><span class="rn" style="color:var(--text3);font-size:11px">Цена клиенту (с наценкой)</span><span class="rv" id="slr-price" style="font-size:13px;color:var(--accent)">—</span></div>
+
+    <div class="bar-wrap" style="margin-top:10px">
+      <div class="bar-title">Состав объёма материала</div>
+      <div class="bar-stack" id="slr-stack"></div>
+      <div class="bar-legend" id="slr-legend"></div>
+    </div>
+  </div>
+
+</div>
+</div>
+
 <!-- ════════════ TESTER ════════════ -->
 <div class="view" id="view-tester">
 <div class="tester-wrap">
@@ -623,6 +801,7 @@ function sv(v,btn){
   document.querySelectorAll('.view').forEach(e=>e.classList.remove('on'));
   el('view-'+v).classList.add('on');
   if(v==='client') populateClient();
+  if(v==='slicer') initSlicer();
   if(v==='tester') initTester();
 }
 function sp(id,e){
@@ -1187,6 +1366,212 @@ function calcCompetitor(myFinal, myCost, myMarginPct, massG){
       vd.innerHTML = `Ты дороже на ${fmt(diff)} ₽, а маржа уже низкая (${Math.round(myMarginPct)}%). Снижать цену рискованно. Лучше оптимизируй: больше деталей в запуске, переговоры с поставщиком материала, загрузка принтера.`;
     }
   }
+}
+
+
+// ═══════════ VIRTUAL SLICER ═══════════
+
+function initSlicer(){
+  el('sl-material').innerHTML = DB.materials.filter(m=>m.tech==='FDM').map(m=>`<option value="${m.id}">${m.name} — ρ=${m.density}</option>`).join('');
+  el('sl-profile').innerHTML  = DB.profiles.map(p=>`<option value="${p.id}">${p.name} (+${p.markup}%)</option>`).join('');
+  el('sl-printer').innerHTML  = DB.printers.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  calcSlicer();
+}
+
+function calcSlicer(){
+  var X   = +el('sl-x').value||0;
+  var Y   = +el('sl-y').value||0;
+  var Z   = +el('sl-z').value||0;
+  var shape    = el('sl-shape').value;
+  var custPct  = +el('sl-custom-pct').value||65;
+  var layerH   = +el('sl-layer').value||0.2;
+  var wallThk  = +el('sl-wall').value||0.8;
+  var infillPct= +el('sl-infill').value||15;
+  var topBot   = +el('sl-topbot').value||3;
+  var speed    = +el('sl-speed').value||60;
+  var suppPct  = +el('sl-support').value||10;
+  var slQty    = +el('sl-qty').value||1;
+
+  el('sl-custom-row').style.display = shape==='custom'?'block':'none';
+
+  if(!X||!Y||!Z) return;
+
+  // 1. Объём bbox и геометрии (в мм³ → делим на 1000 для см³)
+  var bboxVol = X*Y*Z;
+  var geoVol;
+  switch(shape){
+    case 'cylinder': geoVol = Math.PI*(Math.min(X,Y)/2)*(Math.min(X,Y)/2)*Z; break;
+    case 'sphere':   geoVol = (4/3)*Math.PI*Math.pow(Math.min(X,Y,Z)/2,3); break;
+    case 'custom':   geoVol = bboxVol*(custPct/100); break;
+    default:         geoVol = bboxVol; // box
+  }
+  var surface; // площадь поверхности мм²
+  switch(shape){
+    case 'cylinder':
+      var r=Math.min(X,Y)/2;
+      surface = 2*Math.PI*r*r + 2*Math.PI*r*Z; break;
+    case 'sphere':
+      var rs=Math.min(X,Y,Z)/2;
+      surface = 4*Math.PI*rs*rs; break;
+    default:
+      surface = 2*(X*Y + Y*Z + X*Z);
+  }
+
+  // 2. Количество слоёв
+  var layers = Math.floor(Z / layerH);
+
+  // 3. Объём стенок (мм³)
+  // периметр поперечного сечения × толщина стенки × высота слоя × кол-во слоёв
+  var perim; // периметр сечения в мм
+  switch(shape){
+    case 'cylinder': perim = Math.PI*Math.min(X,Y); break;
+    case 'sphere':
+      var avgR = Math.min(X,Y,Z)/2 * 0.7;
+      perim = 2*Math.PI*avgR; break;
+    default: perim = 2*(X+Y);
+  }
+  var wallVol = perim * wallThk * Z; // мм³
+
+  // 4. Объём верхних и нижних слоёв
+  // площадь горизонтального сечения × толщина слоя × кол-во слоёв × 2 стороны
+  var crossSection;
+  switch(shape){
+    case 'cylinder': crossSection = Math.PI*(Math.min(X,Y)/2)*(Math.min(X,Y)/2); break;
+    case 'sphere':   crossSection = Math.PI*(Math.min(X,Y)/2)*(Math.min(X,Y)/2)*0.5; break;
+    default:         crossSection = X*Y;
+  }
+  var topBotVol = crossSection * layerH * topBot * 2; // мм³
+
+  // 5. Внутренний объём (за вычетом стенок и верх/низ)
+  var wallLayerCount = Math.round(wallThk/layerH);
+  var innerVol = Math.max(0, geoVol - wallVol - topBotVol);
+
+  // 6. Объём заполнения
+  var infillVol = innerVol * (infillPct/100);
+
+  // 7. Итоговый объём материала детали (без поддержек), мм³
+  var matVolMm3 = wallVol + topBotVol + infillVol;
+  var matVolCm3 = matVolMm3 / 1000;
+
+  // 8. Поддержки — % от объёма геометрии
+  var suppVolCm3 = (geoVol/1000) * (suppPct/100);
+  var totalVolCm3 = matVolCm3 + suppVolCm3;
+
+  // 9. Длина экструзии (м): объём / (π × (d/2)²), d=1.75 мм → r=0.875
+  var extrusionMm = matVolMm3 / (Math.PI * 0.875 * 0.875);
+  var extrusionM  = extrusionMm / 1000;
+
+  // 10. Оценка времени печати
+  // Время = длина экструзии / скорость. Добавляем 25% на разгоны/замедления/ретракты
+  var printTimeSec = (extrusionMm / speed) * 1.25;
+  var printTimeH   = printTimeSec / 3600;
+
+  // 11. Масса
+  var mat      = DB.materials.find(m=>m.id===+el('sl-material').value);
+  var density  = mat ? mat.density : 1.27;
+  var priceKg  = mat ? mat.price   : 1800;
+  var failRate = mat ? (mat.fail||5) : 5;
+  var massG    = totalVolCm3 * density;
+  var massWithFail = massG * (1 + failRate/100);
+  var matCost  = (massWithFail/1000) * priceKg;
+
+  // 12. Машинное время
+  var printer   = DB.printers.find(p=>p.id===+el('sl-printer').value);
+  var machRate  = printer ? printerRate(printer) : 80;
+  var infraRate = ohPerHr() + (printer ? (printer.watt/1000)*(printer.kwh||6) : 0);
+  var machCost  = (printTimeH * machRate) / slQty;
+  var infraCost = (printTimeH * infraRate) / slQty;
+  var labCost   = (laborTime()/60) * laborRate() / slQty;
+
+  var f = failRate/100;
+  var base = matCost + machCost + infraCost + labCost;
+  var risk = base*f/(1-f);
+  var cost = base + risk;
+
+  // 13. Цена клиенту
+  var profile  = DB.profiles.find(p=>p.id===+el('sl-profile').value);
+  var mk = profile ? profile.markup/100 : 0.8;
+  var tx = profile ? profile.tax/100    : 0.06;
+  var pNoVat = cost*(1+mk)/(1-tx);
+
+  // ─── Отображение ───
+  function fmtCm(n){ return n.toFixed(2)+' см³'; }
+  function s(id,v){ var e=el(id); if(e) e.textContent=v; }
+
+  s('sl-bbox-vol',    (bboxVol/1000).toFixed(1)+' см³');
+  s('sl-geo-vol',     (geoVol/1000).toFixed(2)+' см³');
+  s('sl-surface',     (surface/100).toFixed(1)+' см²');
+  s('sl-mat-vol',     matVolCm3.toFixed(2)+' см³');
+  s('sl-sup-vol',     suppVolCm3.toFixed(2)+' см³');
+  s('sl-mass',        massG.toFixed(1)+' г');
+  s('sl-time',        printTimeH.toFixed(1)+' ч');
+  s('sl-layers',      layers+' шт');
+  s('sl-extrusion',   extrusionM.toFixed(1)+' м');
+  var wallPct = matVolMm3>0?Math.round(wallVol/matVolMm3*100):0;
+  s('sl-wall-pct',    wallPct+'%');
+
+  // правая панель
+  s('slr-walls',      (wallVol/1000).toFixed(2)+' см³');
+  s('slr-infill',     (infillVol/1000).toFixed(2)+' см³');
+  s('slr-topbot',     (topBotVol/1000).toFixed(2)+' см³');
+  s('slr-support',    suppVolCm3.toFixed(2)+' см³');
+  s('slr-total-vol',  totalVolCm3.toFixed(2)+' см³');
+  s('slr-density',    density+' г/см³');
+  s('slr-mass',       massG.toFixed(1)+' г');
+  s('slr-matcost',    fmt(matCost)+' ₽');
+  s('slr-time',       printTimeH.toFixed(2)+' ч');
+  s('slr-machcost',   fmt(machCost)+' ₽');
+  s('slr-infracost',  fmt(infraCost)+' ₽');
+  s('slr-cost',       fmt(cost)+' ₽');
+  s('slr-price',      fmt(Math.round(pNoVat))+' ₽');
+
+  // диаграмма состава
+  var wallCm   = wallVol/1000;
+  var tbCm     = topBotVol/1000;
+  var infCm    = infillVol/1000;
+  var segs = [
+    {l:'Стенки',    v:wallCm,    c:'#378ADD'},
+    {l:'Верх/низ',  v:tbCm,      c:'#1D9E75'},
+    {l:'Заполнение',v:infCm,     c:'#7F77DD'},
+    {l:'Поддержки', v:suppVolCm3,c:'#E24B4A'}
+  ].filter(sg=>sg.v>0.001);
+  var tot = segs.reduce((a,b)=>a+b.v,0);
+  el('slr-stack').innerHTML = segs.map(sg=>`<div class="bar-seg" style="flex:${tot>0?Math.round(sg.v/tot*100):0};background:${sg.c}"></div>`).join('');
+  el('slr-legend').innerHTML = segs.map(sg=>`<div class="bleg"><span class="bleg-dot" style="background:${sg.c}"></span>${sg.l} ${tot>0?Math.round(sg.v/tot*100):0}%</div>`).join('');
+
+  // сохраняем для переноса в заказ
+  window._slicerResult = {
+    vol:     matVolCm3,
+    suppPct: suppPct,
+    time:    parseFloat(printTimeH.toFixed(1)),
+    matId:   +el('sl-material').value,
+    profileId: +el('sl-profile').value,
+    printerId: +el('sl-printer').value,
+    qty:     slQty
+  };
+}
+
+function slicerToOrder(){
+  var r = window._slicerResult;
+  if(!r){ alert('Сначала заполни параметры в слайсере'); return; }
+
+  // Переключаемся на вкладку Заказ
+  var btn = document.querySelector('.tab-btn:nth-child(2)');
+  sv('client', btn);
+
+  // Подставляем значения
+  setTimeout(function(){
+    el('c-vol').value    = r.vol.toFixed(2);
+    el('c-supp').value   = r.suppPct;
+    el('c-time').value   = r.time;
+    el('c-qty').value    = r.qty;
+    // Выбираем материал
+    if(el('c-material')) el('c-material').value = r.matId;
+    if(el('c-profile'))  el('c-profile').value  = r.profileId;
+    if(el('c-printer'))  el('c-printer').value  = r.printerId;
+    onMC();
+    calcOrder();
+  }, 100);
 }
 
 function renderAll(){renderPrinters();renderMaterials();renderOH();renderLabor();renderProfiles();renderPP();}
